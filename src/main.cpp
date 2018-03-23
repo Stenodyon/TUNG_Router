@@ -15,13 +15,23 @@ int main()
     grid<int> map(32, 32); map.fill(0);
     chip_type type1(3, 8);
     type1.add_pin(EAST, 0);
+    type1.add_pin(EAST, 1);
     type1.add_pin(EAST, 2);
+    type1.add_pin(EAST, 3);
     type1.add_pin(EAST, 4);
+    type1.add_pin(EAST, 5);
+    type1.add_pin(EAST, 6);
+    type1.add_pin(EAST, 7);
     chip testchip({9, 9}, type1);
     chip_type type2(3, 8);
     type2.add_pin(WEST, 0);
+    type2.add_pin(WEST, 1);
     type2.add_pin(WEST, 2);
+    type2.add_pin(WEST, 3);
     type2.add_pin(WEST, 4);
+    type2.add_pin(WEST, 5);
+    type2.add_pin(WEST, 6);
+    type2.add_pin(WEST, 7);
     chip testchip2({23, 10}, type2);
     place_chip(map, testchip);
     place_chip(map, testchip2);
@@ -31,7 +41,12 @@ int main()
             {testchip.get_pin_pos(EAST, 0), testchip2.get_pin_pos(WEST, 0)},
             {testchip.get_pin_pos(EAST, 1), testchip2.get_pin_pos(WEST, 1)},
             {testchip.get_pin_pos(EAST, 2), testchip2.get_pin_pos(WEST, 2)},
-            }, map);
+            {testchip.get_pin_pos(EAST, 3), testchip2.get_pin_pos(WEST, 3)},
+            {testchip.get_pin_pos(EAST, 4), testchip2.get_pin_pos(WEST, 4)},
+            {testchip.get_pin_pos(EAST, 5), testchip2.get_pin_pos(WEST, 5)},
+            {testchip.get_pin_pos(EAST, 6), testchip2.get_pin_pos(WEST, 6)},
+            {testchip.get_pin_pos(EAST, 7), testchip2.get_pin_pos(WEST, 7)},
+            }, map, true);
     for(auto path : paths)
         out.apply_path(path, 'o', '-', '|', '+');
     print(out);

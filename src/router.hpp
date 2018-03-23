@@ -11,4 +11,8 @@ typedef std::pair<vi2, vi2> connection;
 std::vector<vi2> simplify(const std::vector<vi2> & path);
 std::vector<std::vector<vi2>> route(
         const std::vector<connection> connections,
+        const grid<int> & map,
+        bool find_best = false);
+std::vector<std::vector<vi2>> attempt_route(
+        const std::vector<connection> connections,
         const grid<int> & map);
