@@ -1,5 +1,7 @@
 router*.exe
 *.o
+*.dll
+*.rf
 build/
 lib/
 resources/

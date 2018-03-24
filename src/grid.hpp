@@ -2,10 +2,17 @@
 
 #include <cstring>
 #include <algorithm>
+#include <functional>
 
 #include "v2.hpp"
 #include "assert.hpp"
 #include "types.hpp"
+
+template <typename T>
+T merger_replace(const T& previous, const T& new_value)
+{
+    return new_value;
+}
 
 template <typename T, typename v_t = vi2>
 class grid
@@ -32,7 +39,9 @@ class grid
                 const T & peg,
                 const T & hor_wire,
                 const T & vert_wire,
-                const T & on_cross_wire);
+                const T & slash_wire,
+                const T & bslash_wire,
+                std::function<T(const T&, const T&)> merger = merger_replace);
 };
 
 template <typename T, typename v_t>
@@ -95,35 +104,39 @@ void grid<T, v_t>::fill(vi2 pos, vi2 size, const T & value)
 }
 
 template <typename T, typename v_t>
-void grid<T, v_t>::apply_path(const std::vector<vi2> & path,
+void grid<T, v_t>::apply_path(
+        const std::vector<vi2> & path,
         const T & peg,
         const T & hor_wire,
         const T & vert_wire,
-        const T & on_cross_wire)
+        const T & slash_wire,
+        const T & bslash_wire,
+        std::function<T(const T&, const T&)> merger)
 {
     for(auto prev_pos = path.begin(), pos = std::next(path.begin(), 1);
             pos != path.end();
             (prev_pos++, pos++))
     {
-        (*this)[*prev_pos] = peg;
+        (*this)[*prev_pos] = merger((*this)[*prev_pos], peg);
         auto dir = (*pos - *prev_pos).normalized();
         for(auto pointer = *prev_pos + dir; pointer != *pos; pointer += dir)
         {
-            if((*this)[pointer] == hor_wire && dir.y != 0)
-            {
-                (*this)[pointer] = on_cross_wire;
-                continue;
-            }
-            else if((*this)[pointer] == vert_wire && dir.x != 0)
-            {
-                (*this)[pointer] = on_cross_wire;
-                continue;
-            }
+            auto value = (*this)[pointer];
+            auto& lvalue = (*this)[pointer];
+            if(dir.x == 0)
+                lvalue = merger(value, vert_wire);
+            else if(dir.y == 0)
+                lvalue = merger(value, hor_wire);
+            else if(dir.x != dir.y)
+                lvalue = merger(value, slash_wire);
+            else if(dir.x == dir.y)
+                lvalue = merger(value, bslash_wire);
             else
             {
-                (*this)[pointer] = dir.x != 0 ? hor_wire : vert_wire;
+                std::cout << dir << std::endl;
+                assert(false);
             }
         }
     }
-    (*this)[*path.rbegin()] = peg;
+    (*this)[*path.rbegin()] = merger((*this)[*path.rbegin()], peg);
 }

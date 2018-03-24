@@ -4,6 +4,12 @@
 #include "types.hpp"
 #include "progress.hpp"
 
+int merge_path(const int & prev, const int & new_value)
+{
+    if(prev == OBSTRUCTION || new_value == OBSTRUCTION) return OBSTRUCTION;
+    else return prev | new_value;
+}
+
 std::vector<vi2> simplify(const std::vector<vi2> & path)
 {
     if(path.size() <= 2)
@@ -54,6 +60,27 @@ uint_t footprint(const std::vector<std::vector<vi2>> & paths)
     return (max_x - min_x) * (max_y - min_y);
 }
 
+uint_t wire_length(const std::vector<std::vector<vi2>> & paths)
+{
+    uint_t cost = 0;
+    for(auto path : paths)
+    {
+        for(uint_t i = 1; i < path.size(); i++)
+        {
+            auto diff = path[i] - path[i-1];
+            if(!diff.aligned()) cost += 3 * std::abs(diff.x);
+            else cost += 2 * diff.manhattan();
+        }
+    }
+    return cost;
+}
+
+uint_t evaluate(const std::vector<std::vector<vi2>> & paths)
+{
+    return footprint(paths) + wire_length(paths);
+    //return wire_length(paths);
+}
+
 std::vector<std::vector<vi2>> route(
         const std::vector<connection> connections,
         const grid<int> & map,
@@ -63,7 +90,7 @@ std::vector<std::vector<vi2>> route(
     uint_t max_attempts = factorial(connections.size());
     progress_bar prog(max_attempts);
     std::vector<std::vector<vi2>> best_candidate;
-    uint_t best_footprint = -1;
+    uint_t best_score = -1;
     std::vector<connection> _connections(connections.size());
     do
     {
@@ -77,12 +104,15 @@ std::vector<std::vector<vi2>> route(
         if(paths.size() >= connections.size())
         {
             if(!find_best)
+            {
+                std::cout << std::endl;
                 return paths;
-            uint_t current_footprint = footprint(paths);
-            if(current_footprint < best_footprint)
+            }
+            uint_t current_score = evaluate(paths);
+            if(current_score < best_score)
             {
                 best_candidate = paths;
-                best_footprint = current_footprint;
+                best_score = current_score;
             }
         }
         ++permutation;
@@ -90,11 +120,12 @@ std::vector<std::vector<vi2>> route(
         if(prog.value % (prog.max / 100) == 0)
         {
             std::cout << prog;
-            if(best_footprint != -1)
-                std::cout << " " << best_footprint << "        ";
+            if(best_score != -1)
+                std::cout << " " << best_score << "        ";
         }
     }
     while(!permutation.complete());
+    std::cout << std::endl;
     return best_candidate;
 }
 
@@ -131,7 +162,9 @@ std::vector<std::vector<vi2>> attempt_route(
                 OBSTRUCTION,
                 HOR_WIRE,
                 VERT_WIRE,
-                OBSTRUCTION);
+                SLASH_WIRE,
+                BSLASH_WIRE,
+                merge_path);
     }
 
     return paths;
