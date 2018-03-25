@@ -112,5 +112,20 @@ v2<int_t> v2<int_t>::normalized() const
     return { sgn<int_t, int_t>(x), sgn<int_t, int_t>(y) };
 }
 
+namespace std
+{
+    template <typename int_t>
+    struct hash<v2<int_t>>
+    {
+        size_t operator()(const v2<int_t> & vec) const
+        {
+            size_t seed = 2;
+            seed ^= vec.x + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= vec.y + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            return seed;
+        }
+    };
+}
+
 typedef v2<int_fast64_t> vi2;
 typedef v2<uint_fast64_t> vu2;

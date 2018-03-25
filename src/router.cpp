@@ -77,8 +77,8 @@ uint_t wire_length(const std::vector<std::vector<vi2>> & paths)
 
 uint_t evaluate(const std::vector<std::vector<vi2>> & paths)
 {
-    return footprint(paths) + wire_length(paths);
-    //return wire_length(paths);
+    //return footprint(paths) + wire_length(paths);
+    return wire_length(paths);
 }
 
 router::router(routing_problem & problem, bool find_best)
@@ -119,12 +119,15 @@ std::vector<std::vector<vi2>> router::route()
         }
         ++permutation;
         prog_bar.increment();
-        if(prog_bar.value % (prog_bar.max / 100) == 0)
+#if 0
+        //if(prog_bar.value % (prog_bar.max / 100) == 0)
+        if(prog_bar.value % 100000)
         {
             std::cout << prog_bar;
             if(best_score != -1)
                 std::cout << " " << best_score << "        ";
         }
+#endif
     }
     while(!permutation.complete());
     std::cout << std::endl;
@@ -139,6 +142,7 @@ void router::propose_candidate(const std::vector<std::vector<vi2>>& candidate)
         best_candidate = candidate;
         best_score = current_score;
         on_best_candidate(candidate);
+        std::cout << "\r" << best_score << "        " << std::endl;
     }
 }
 
@@ -148,19 +152,26 @@ std::vector<std::vector<vi2>> router::attempt_route(
 {
     current_map = map;
     std::vector<std::vector<vi2>> paths;
+    paths.reserve(connections.size());
+    std::unordered_map<vi2, std::vector<vi2>> endpoints;
 
-    for(auto conn : connections)
+    for(const auto& [start, end] : connections)
     {
-        current_map[conn.first] = OBSTRUCTION;
-        current_map[conn.second] = OBSTRUCTION;
+        current_map[start] = OBSTRUCTION;
+        current_map[end] = OBSTRUCTION;
     }
 
-    for(auto conn : connections)
+    for(const auto& [start, end] : connections)
     {
-        current_map[conn.first] = VOID;
-        current_map[conn.second] = VOID;
+        current_map[start] = VOID;
+        current_map[end] = VOID;
 
-        auto path = find_path(conn.first, {conn.second}, &current_map);
+        endpoints[start].push_back(start);
+
+        for(const auto& point : endpoints[start])
+            current_map[point] = VOID;
+        auto path = find_path(end, endpoints[start], &current_map);
+        //auto path = find_path(start, {end}, &current_map);
         if(path.empty())
         {
 #ifdef _DEBUG
@@ -170,7 +181,12 @@ std::vector<std::vector<vi2>> router::attempt_route(
         }
 
         auto simplified_path = simplify(path);
+        endpoints[start].insert(endpoints[start].end(),
+                simplified_path.begin(),
+                simplified_path.end());
         paths.push_back(simplified_path);
+        for(const auto& point : endpoints[start])
+            current_map[point] = OBSTRUCTION;
         current_map.apply_path(simplified_path,
                 OBSTRUCTION,
                 HOR_WIRE,

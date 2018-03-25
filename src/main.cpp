@@ -28,9 +28,9 @@ int main(int argc, char * argv[])
     bool best = cl_args.has_option("-b");
     std::string filename = cl_args.get_last();
 
-    GraphicsOutput graphics;
-
     routing_problem problem(filename);
+    const auto& [width, height] = problem.map.get_size();
+    GraphicsOutput graphics(width, height);
     router _router(problem, best);
     _router.on_best_candidate = [&graphics, &problem] (const std::vector<std::vector<vi2>>& candidate)
     {

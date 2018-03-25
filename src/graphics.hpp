@@ -14,8 +14,13 @@ class GraphicsOutput
         SDL_Window * window;
         SDL_Renderer * render;
 
+        int width, height;
+
+        void to_window_space(int & x, int & y);
+        void to_window_space(SDL_Rect & rect);
+
     public:
-        GraphicsOutput();
+        GraphicsOutput(int width, int height);
         ~GraphicsOutput();
 
         void clear();

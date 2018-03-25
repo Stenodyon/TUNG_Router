@@ -15,4 +15,6 @@
 #define BSLASH_WIRE 16
 #define DIR_MASK 0b11110
 
-std::vector<vi2> find_path(vi2 start, std::vector<vi2> ends, grid<int> * map);
+std::vector<vi2> find_path(const vi2 & start,
+        const std::vector<vi2> & ends,
+        grid<int> * map);

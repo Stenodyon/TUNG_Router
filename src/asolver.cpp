@@ -29,7 +29,9 @@ static std::vector<vi2> reconstruct_path(const grid<vi2> & came_from,
 
 typedef std::vector<vi2> container_t;
 
-std::vector<vi2> find_path(vi2 start, std::vector<vi2> ends, grid<int> * map)
+std::vector<vi2> find_path(const vi2 & start,
+        const std::vector<vi2> & ends,
+        grid<int> * map)
 {
     auto size = map->get_size();
 

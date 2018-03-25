@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cassert>
 
+#include "assert.hpp"
+
 chip_type::chip_type(uint_t width, uint_t height)
     : width(width), height(height)
 {}
@@ -25,6 +27,17 @@ void chip_type::add_pin(uint_t side, uint_t pos, std::string label)
 
 vi2 chip_type::get_pin_offset(uint_t side, uint_t pin_number) const
 {
+#if 0
+    if(pin_number >= pins[side].size())
+    {
+        std::cerr << "Error trying to access pin " << pin_number
+            << " on side " << side << " (only " << pins[side].size()
+            << " pins on this side)" << std::endl;
+        exit(-1);
+    }
+#endif
+    ASSERT(side, 4, <);
+    ASSERT(pin_number, pins[side].size(), <);
     switch(side)
     {
         case NORTH:
@@ -57,5 +70,32 @@ chip::chip(vi2 pos, const chip_type & type)
 
 vi2 chip::get_pin_pos(uint_t side, uint_t pin_number) const
 {
-    return pos + type.get_pin_offset(side, pin_number);
+    ASSERT(side, 4, <);
+    vi2 pin_offset;
+    switch(side)
+    {
+        case NORTH:
+            ASSERT(pin_number, type.width, <);
+            pin_offset = vi2{(signed)pin_number, -1};
+            break;
+        case SOUTH:
+            ASSERT(pin_number, type.width, <);
+            pin_offset = vi2{(signed)pin_number, (signed)type.height};
+            break;
+        case EAST:
+            ASSERT(pin_number, type.height, <);
+            pin_offset = vi2{(signed)type.width, (signed)pin_number};
+            break;
+        case WEST:
+            ASSERT(pin_number, type.height, <);
+            pin_offset = vi2{-1, (signed)pin_number};
+            break;
+        default:
+            assert(false);
+    }
+    //const auto pin_pos = pos + type.get_pin_offset(side, pin_number); 
+    const auto pin_pos = pos + pin_offset;
+    ASSERT(pin_pos.x, 0, >=);
+    ASSERT(pin_pos.y, 0, >=);
+    return pin_pos;
 }

@@ -142,14 +142,15 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
     {
         if(net.size() > 2)
         {
-            std::cerr << "Error: Nets of more than 2 pins are not supported yet" << std::endl;
-            exit(-1);
+            const auto& key = net[0];
+            for(auto pin = std::next(net.begin(), 1); pin != net.end(); pin++)
+                to_route.push_back({key, *pin});
         }
 
-        if(net.size() == 1)
+        else if(net.size() == 1)
             std::cout << "Warning: net " << net_name
                 << " contains only 1 pin" << std::endl;
-        if(net.size() == 2)
+        else if(net.size() == 2)
             to_route.push_back({net[0], net[1]});
     }
 #pragma GCC diagnostic push
