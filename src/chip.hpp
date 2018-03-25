@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <unordered_map>
 
 #include "v2.hpp"
 #include "types.hpp"
@@ -14,10 +15,13 @@ struct chip_type
 {
     uint_t width, height;
     std::vector<uint_t> pins[4];
+    std::unordered_map<std::string, vu2> pin_labels;
 
     chip_type(uint_t width, uint_t height);
 
-    void add_pin(uint_t side, uint_t pos);
+    void add_pin(uint_t side, uint_t pos, std::string label);
+    bool has_pin_label(const std::string & label) const;
+    vu2 get_pin_by_label(const std::string & label) const;
     vi2 get_pin_offset(uint_t side, uint_t pin_number) const;
 };
 

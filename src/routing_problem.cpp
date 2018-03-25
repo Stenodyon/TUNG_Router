@@ -35,7 +35,7 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
         }
         else if(components[0] == "pin")
         {
-            if(components.size() != 4)
+            if(components.size() != 5)
             {
                 std::cerr << line_count << ": parse error: '" << line << "'" << std::endl;
                 exit(-1);
@@ -43,6 +43,7 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
             std::string type_name = components[1];
             int_t side = get_side(components[2]);
             int position = std::stoi(components[3]);
+            std::string label = components[4];
 
             if(side == -1)
             {
@@ -57,7 +58,7 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
                 exit(-1);
             }
             chip_type & type = types.at(type_name);
-            type.add_pin(side, position);
+            type.add_pin(side, position, label);
         }
         else if(components[0] == "instance")
         {
@@ -81,21 +82,14 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
         }
         else if(components[0] == "net")
         {
-            if(components.size() != 5)
+            if(components.size() != 4)
             {
                 std::cerr << line_count << ": parse error: '" << line << "'" << std::endl;
                 exit(-1);
             }
             std::string name = components[1];
             std::string chip_name = components[2];
-            int_t side = get_side(components[3]);
-            int pin_number = std::stoi(components[4]);
-            if(side == -1)
-            {
-                std::cerr << line_count << ": ";
-                std::cerr << "Unknown side " << components[2] << std::endl;
-                exit(-1);
-            }
+            std::string pin_label = components[3];
             if(chips.find(chip_name) == chips.end())
             {
                 std::cerr << line_count << ": ";
@@ -103,6 +97,14 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
                 exit(-1);
             }
             chip & _chip = chips.at(chip_name);
+            if(!_chip.type.has_pin_label(pin_label))
+            {
+                std::cerr << line_count << ": ";
+                std::cerr << "Chip " << chip_name << " has no pin labelled "
+                    << pin_label << std::endl;
+                exit(-1);
+            }
+            const auto& [side, pin_number] = _chip.type.get_pin_by_label(pin_label);
             auto pin_pos = _chip.get_pin_pos(side, pin_number);
             nets[name].push_back(pin_pos);
         }

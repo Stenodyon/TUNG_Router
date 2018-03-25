@@ -7,7 +7,7 @@ chip_type::chip_type(uint_t width, uint_t height)
     : width(width), height(height)
 {}
 
-void chip_type::add_pin(uint_t side, uint_t pos)
+void chip_type::add_pin(uint_t side, uint_t pos, std::string label)
 {
 #ifdef _DEBUG
     if(side == NORTH || side == SOUTH)
@@ -20,6 +20,7 @@ void chip_type::add_pin(uint_t side, uint_t pos)
             _pins.begin(), _pins.end(), pos,
             std::greater<uint_t>());
     _pins.insert(it_pos, pos);
+    pin_labels.insert({label, {side, pos}});
 }
 
 vi2 chip_type::get_pin_offset(uint_t side, uint_t pin_number) const
@@ -38,6 +39,16 @@ vi2 chip_type::get_pin_offset(uint_t side, uint_t pin_number) const
             assert(false);
     }
     return {-1, -1};
+}
+
+bool chip_type::has_pin_label(const std::string & label) const
+{
+    return pin_labels.find(label) != pin_labels.end();
+}
+
+vu2 chip_type::get_pin_by_label(const std::string & label) const
+{
+    return pin_labels.at(label);
 }
 
 chip::chip(vi2 pos, const chip_type & type)
