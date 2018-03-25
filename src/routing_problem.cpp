@@ -1,5 +1,7 @@
 #include "routing_problem.hpp"
 
+#include <optional>
+
 #include "fileutils.h"
 #include "stringutils.h"
 
@@ -11,6 +13,7 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
     std::string contents = read_file(filename);
     std::vector<std::string> lines = split(contents, "\n");
     uint_t line_count = 1;
+    std::optional<vi2> board_size;
     for(std::string line : lines)
     {
         line = line.substr(0, line.find("#"));
@@ -20,7 +23,26 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
         if(components.size() == 0
                 || (components.size() == 1 && components[0] == ""))
             continue;
-        if(components[0] == "chip") // chip type definition
+        if(components[0] == "board") // board size
+        {
+            if(components.size() != 3)
+            {
+                std::cerr << line_count << ": ";
+                std::cerr << "parse error: '" << line << "'" << std::endl;
+                exit(-1);
+            }
+            int width = std::stoi(components[1]);
+            int height = std::stoi(components[2]);
+            board_size = {width, height};
+            map = grid<int>(width, height);
+        }
+        else if(!board_size)
+        {
+            std::cerr << line_count << ": ";
+            std::cerr << "Undefined board size" << std::endl;
+            exit(-1);
+        }
+        else if(components[0] == "chip") // chip type definition
         {
             if(components.size() != 4)
             {
