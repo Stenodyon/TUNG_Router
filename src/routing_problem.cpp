@@ -29,8 +29,8 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
                 exit(-1);
             }
             std::string name = components[1];
-            int width = std::stoi(components[2]);
-            int height = std::stoi(components[3]);
+            uint_t width = (uint_t)std::stoi(components[2]);
+            uint_t height = (uint_t)std::stoi(components[3]);
             types.insert({name, {width, height}});
         }
         else if(components[0] == "pin")
@@ -128,7 +128,10 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
         if(net.size() == 2)
             to_route.push_back({net[0], net[1]});
     }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
     for(const auto & [chip_name, _chip] : chips)
+#pragma GCC diagnostic pop
         place_chip(map, _chip);
 }
 

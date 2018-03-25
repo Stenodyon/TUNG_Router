@@ -109,6 +109,7 @@ std::vector<std::vector<vi2>> router::route()
             if(!find_best)
             {
                 std::cout << std::endl;
+                on_best_candidate(paths);
                 return paths;
             }
             else

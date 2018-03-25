@@ -27,6 +27,7 @@ GraphicsOutput::GraphicsOutput()
     }
     SDL_SetRenderDrawColor(render, 0, 0, 0, 255);
     SDL_RenderClear(render);
+    SDL_RenderPresent(render);
 }
 
 GraphicsOutput::~GraphicsOutput()
@@ -46,14 +47,14 @@ void GraphicsOutput::draw_map(const grid<int> & map)
 {
     SDL_SetRenderDrawColor(render, 0, 255, 0, 255);
     auto [width, height] = map.get_size();
-    for(uint_t y = 0; y < height; y++)
+    for(int_t y = 0; y < height; y++)
     {
-        for(uint_t x = 0; x < width; x++)
+        for(int_t x = 0; x < width; x++)
         {
             const int value = map[{x, y}];
             if(value == 1)
             {
-                const SDL_Rect rect{x * SIZE, y * SIZE, SIZE, SIZE};
+                const SDL_Rect rect{(int)x * SIZE, (int)y * SIZE, SIZE, SIZE};
                 SDL_RenderFillRect(render, &rect);
             }
         }
@@ -66,8 +67,8 @@ void GraphicsOutput::draw_path(const std::vector<vi2> & path)
     {
         const auto& pos = path[0];
         const SDL_Rect peg{
-            pos.x * SIZE + (SIZE - PEG_SIZE) / 2,
-            pos.y * SIZE + (SIZE - PEG_SIZE) / 2,
+            (int)pos.x * SIZE + (SIZE - PEG_SIZE) / 2,
+            (int)pos.y * SIZE + (SIZE - PEG_SIZE) / 2,
             PEG_SIZE,
             PEG_SIZE};
         SDL_RenderFillRect(render, &peg);
@@ -77,8 +78,8 @@ void GraphicsOutput::draw_path(const std::vector<vi2> & path)
         const auto& pos = path[i];
         const auto& prev = path[i-1];
         const SDL_Rect peg{
-            pos.x * SIZE + (SIZE - PEG_SIZE) / 2,
-            pos.y * SIZE + (SIZE - PEG_SIZE) / 2,
+            (int)pos.x * SIZE + (SIZE - PEG_SIZE) / 2,
+            (int)pos.y * SIZE + (SIZE - PEG_SIZE) / 2,
             PEG_SIZE,
             PEG_SIZE};
         SDL_RenderFillRect(render, &peg);
