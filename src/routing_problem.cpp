@@ -132,11 +132,6 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
         place_chip(map, _chip);
 }
 
-std::vector<std::vector<vi2>> routing_problem::route(bool find_best)
-{
-    return ::route(to_route, map, find_best);
-}
-
 int_t get_side(const std::string & name)
 {
     if(name == "n")

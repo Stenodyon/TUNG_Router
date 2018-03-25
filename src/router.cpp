@@ -81,16 +81,19 @@ uint_t evaluate(const std::vector<std::vector<vi2>> & paths)
     //return wire_length(paths);
 }
 
-std::vector<std::vector<vi2>> route(
-        const std::vector<connection> connections,
-        const grid<int> & map,
-        bool find_best)
+router::router(routing_problem & problem, bool find_best)
+    : map(problem.map), current_map(map),
+    connections(problem.to_route),
+    permutation(connections.size()),
+    prog_bar(factorial(connections.size())),
+    find_best(find_best),
+    best_score(-1),
+    on_best_candidate([](const std::vector<std::vector<vi2>>&) {})
 {
-    permutation_iterator permutation(connections.size());
-    uint_t max_attempts = factorial(connections.size());
-    progress_bar prog(max_attempts);
-    std::vector<std::vector<vi2>> best_candidate;
-    uint_t best_score = -1;
+}
+
+std::vector<std::vector<vi2>> router::route()
+{
     std::vector<connection> _connections(connections.size());
     do
     {
@@ -108,18 +111,16 @@ std::vector<std::vector<vi2>> route(
                 std::cout << std::endl;
                 return paths;
             }
-            uint_t current_score = evaluate(paths);
-            if(current_score < best_score)
+            else
             {
-                best_candidate = paths;
-                best_score = current_score;
+                propose_candidate(paths);
             }
         }
         ++permutation;
-        prog.increment();
-        if(prog.value % (prog.max / 100) == 0)
+        prog_bar.increment();
+        if(prog_bar.value % (prog_bar.max / 100) == 0)
         {
-            std::cout << prog;
+            std::cout << prog_bar;
             if(best_score != -1)
                 std::cout << " " << best_score << "        ";
         }
@@ -129,25 +130,36 @@ std::vector<std::vector<vi2>> route(
     return best_candidate;
 }
 
-std::vector<std::vector<vi2>> attempt_route(
-        const std::vector<connection> connections,
-        const grid<int> & _map)
+void router::propose_candidate(const std::vector<std::vector<vi2>>& candidate)
 {
-    grid<int> map(_map);
+    uint_t current_score = evaluate(candidate);
+    if(current_score < best_score)
+    {
+        best_candidate = candidate;
+        best_score = current_score;
+        on_best_candidate(candidate);
+    }
+}
+
+std::vector<std::vector<vi2>> router::attempt_route(
+        const std::vector<connection> & connections,
+        const grid<int> & map)
+{
+    current_map = map;
     std::vector<std::vector<vi2>> paths;
 
     for(auto conn : connections)
     {
-        map[conn.first] = OBSTRUCTION;
-        map[conn.second] = OBSTRUCTION;
+        current_map[conn.first] = OBSTRUCTION;
+        current_map[conn.second] = OBSTRUCTION;
     }
 
     for(auto conn : connections)
     {
-        map[conn.first] = VOID;
-        map[conn.second] = VOID;
+        current_map[conn.first] = VOID;
+        current_map[conn.second] = VOID;
 
-        auto path = find_path(conn.first, {conn.second}, &map);
+        auto path = find_path(conn.first, {conn.second}, &current_map);
         if(path.empty())
         {
 #ifdef _DEBUG
@@ -158,7 +170,7 @@ std::vector<std::vector<vi2>> attempt_route(
 
         auto simplified_path = simplify(path);
         paths.push_back(simplified_path);
-        map.apply_path(simplified_path,
+        current_map.apply_path(simplified_path,
                 OBSTRUCTION,
                 HOR_WIRE,
                 VERT_WIRE,
@@ -166,6 +178,5 @@ std::vector<std::vector<vi2>> attempt_route(
                 BSLASH_WIRE,
                 merge_path);
     }
-
     return paths;
 }

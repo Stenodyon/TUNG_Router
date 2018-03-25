@@ -18,7 +18,9 @@ class GraphicsOutput
         GraphicsOutput();
         ~GraphicsOutput();
 
+        void clear();
         void draw_map(const grid<int> & map);
         void draw_path(const std::vector<vi2> & path);
+        void present();
         void loop();
 };

@@ -28,13 +28,20 @@ int main(int argc, char * argv[])
     bool best = cl_args.has_option("-b");
     std::string filename = cl_args.get_last();
 
-    routing_problem problem(filename);
-    auto paths = problem.route(best);
-
     GraphicsOutput graphics;
-    graphics.draw_map(problem.get_map());
-    for(const auto& path : paths)
-        graphics.draw_path(path);
+
+    routing_problem problem(filename);
+    router _router(problem, best);
+    _router.on_best_candidate = [&graphics, &problem] (const std::vector<std::vector<vi2>>& candidate)
+    {
+        graphics.clear();
+        graphics.draw_map(problem.map);
+        for(const auto& path : candidate)
+            graphics.draw_path(path);
+        graphics.present();
+    };
+    _router.route();
+
     graphics.loop();
     return 0;
 }

@@ -36,6 +36,12 @@ GraphicsOutput::~GraphicsOutput()
     SDL_Quit();
 }
 
+void GraphicsOutput::clear()
+{
+    SDL_SetRenderDrawColor(render, 0, 0, 0, 255);
+    SDL_RenderClear(render);
+}
+
 void GraphicsOutput::draw_map(const grid<int> & map)
 {
     SDL_SetRenderDrawColor(render, 0, 255, 0, 255);
@@ -82,6 +88,11 @@ void GraphicsOutput::draw_path(const std::vector<vi2> & path)
                 prev.x * SIZE + SIZE / 2,
                 prev.y * SIZE + SIZE / 2);
     }
+}
+
+void GraphicsOutput::present()
+{
+    SDL_RenderPresent(render);
 }
 
 void GraphicsOutput::loop()

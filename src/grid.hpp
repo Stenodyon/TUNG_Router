@@ -28,6 +28,7 @@ class grid
 
         T operator[](const v_t & pos) const;
         T & operator[](const v_t & pos);
+        grid<T, v_t> & operator=(const grid<T, v_t> & other);
         void fill(const T & value);
         void fill(vi2 pos, vi2 size, const T & value);
 
@@ -78,6 +79,19 @@ T & grid<T, v_t>::operator[](const v_t & pos)
     ASSERT((unsigned)pos.x, width, <);
     ASSERT((unsigned)pos.y, height, <);
     return data[pos.x + width * pos.y];
+}
+
+template <typename T, typename v_t>
+grid<T, v_t> & grid<T, v_t>::operator=(const grid<T, v_t> & other)
+{
+    if(width != other.width || height != other.height)
+    {
+        free(data);
+        width = other.width; height = other.height;
+        data = (T*)malloc(width * height * sizeof(T));
+    }
+    std::memcpy(data, other.data, width * height * sizeof(T));
+    return *this;
 }
 
 template <typename T, typename v_t>
