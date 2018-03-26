@@ -68,16 +68,16 @@ grid<T, v_t>::~grid()
 template <typename T, typename v_t>
 T grid<T, v_t>::operator[](const v_t & pos) const
 {
-    ASSERT(pos.x, (signed)width, <);
-    ASSERT(pos.y, (signed)height, <);
+    ASSERT((unsigned)pos.x, width, <);
+    ASSERT((unsigned)pos.y, height, <);
     return data[pos.x + width * pos.y];
 }
 
 template <typename T, typename v_t>
 T & grid<T, v_t>::operator[](const v_t & pos)
 {
-    ASSERT(pos.x, (signed)width, <);
-    ASSERT(pos.y, (signed)height, <);
+    ASSERT((unsigned)pos.x, width, <);
+    ASSERT((unsigned)pos.y, height, <);
     return data[pos.x + width * pos.y];
 }
 

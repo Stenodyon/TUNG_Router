@@ -26,7 +26,7 @@ class router
         uint_t best_score;
         std::vector<std::vector<vi2>> best_candidate;
 
-        void propose_candidate(const std::vector<std::vector<vi2>>& candidate);
+        bool propose_candidate(const std::vector<std::vector<vi2>>& candidate);
         std::vector<std::vector<vi2>> attempt_route(
                 const std::vector<connection> & connections,
                 const grid<int> & _map);

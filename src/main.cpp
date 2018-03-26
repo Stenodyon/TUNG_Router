@@ -11,6 +11,7 @@
 #include "fileutils.h"
 #include "stringutils.h"
 #include "routing_problem.hpp"
+#include "board_generator.hpp"
 
 grid<char> render(const grid<int> & map);
 void print(const grid<char> & grid_render);
@@ -40,7 +41,10 @@ int main(int argc, char * argv[])
             graphics.draw_path(path);
         graphics.present();
     };
-    _router.route();
+    auto paths = _router.route();
+
+    BoardGenerator generator;
+    generator.generate("test_board.tungboard");
 
     graphics.loop();
     return 0;

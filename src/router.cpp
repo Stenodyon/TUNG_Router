@@ -1,4 +1,9 @@
 #include "router.hpp"
+
+#include <cstdlib>
+#include <ctime>
+#include <algorithm>
+
 #include "asolver.hpp"
 #include "sjt.hpp"
 #include "types.hpp"
@@ -75,10 +80,18 @@ uint_t wire_length(const std::vector<std::vector<vi2>> & paths)
     return cost;
 }
 
+uint_t node_count(const std::vector<std::vector<vi2>> & paths)
+{
+    uint_t cost = 0;
+    for(auto path : paths)
+        cost += path.size();
+    return cost;
+}
+
 uint_t evaluate(const std::vector<std::vector<vi2>> & paths)
 {
     //return footprint(paths) + wire_length(paths);
-    return wire_length(paths);
+    return wire_length(paths) + node_count(paths);
 }
 
 router::router(routing_problem & problem, bool find_best)
@@ -94,16 +107,22 @@ router::router(routing_problem & problem, bool find_best)
 
 std::vector<std::vector<vi2>> router::route()
 {
-    std::vector<connection> _connections(connections.size());
+    std::srand(std::time(0));
     do
     {
+        int_t swap_a = std::rand() % connections.size();
+        int_t swap_b = std::rand() % connections.size();
+        std::iter_swap(connections.begin() + swap_a,
+                connections.begin() + swap_b);
+#if 0
         uint_t pos = 0;
         for(auto index : permutation.values_)
         {
             _connections[pos] = connections[index - 1];
             pos++;
         }
-        auto paths = attempt_route(_connections, map);
+#endif
+        auto paths = attempt_route(connections, map);
         if(paths.size() >= connections.size())
         {
             if(!find_best)
@@ -114,7 +133,11 @@ std::vector<std::vector<vi2>> router::route()
             }
             else
             {
-                propose_candidate(paths);
+                if(!propose_candidate(paths))
+                {
+                    std::iter_swap(connections.begin() + swap_a,
+                            connections.begin() + swap_b);
+                }
             }
         }
         ++permutation;
@@ -134,7 +157,7 @@ std::vector<std::vector<vi2>> router::route()
     return best_candidate;
 }
 
-void router::propose_candidate(const std::vector<std::vector<vi2>>& candidate)
+bool router::propose_candidate(const std::vector<std::vector<vi2>>& candidate)
 {
     uint_t current_score = evaluate(candidate);
     if(current_score < best_score)
@@ -143,7 +166,9 @@ void router::propose_candidate(const std::vector<std::vector<vi2>>& candidate)
         best_score = current_score;
         on_best_candidate(candidate);
         std::cout << "\r" << best_score << "        " << std::endl;
+        return true;
     }
+    return false;
 }
 
 std::vector<std::vector<vi2>> router::attempt_route(
