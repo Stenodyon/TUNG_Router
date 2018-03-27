@@ -6,122 +6,221 @@
 #include <vector>
 #include <unordered_map>
 #include <cassert>
+#include <memory>
 
 #include "v2.hpp"
 
-#pragma pack(push, 1)
-struct v3
-{
-    float x, y, z;
-};
-#pragma pack(pop)
-
-static_assert(sizeof(v3) == 12, "v3 not 3 * 4 bytes");
+using stream = std::fstream;
 
 struct LengthPrefixedString
 {
     const std::string value;
 
+    LengthPrefixedString operator+(const std::string & append);
+
     friend std::fstream& operator<<(std::fstream& out,
             const LengthPrefixedString& lpstring);
 };
 
+std::fstream& operator<<(std::fstream& out, const uint8_t value);
+std::fstream& operator<<(std::fstream& out, const uint32_t value);
+std::fstream& operator<<(std::fstream& out, const float value);
+
 LengthPrefixedString operator "" _lp(const char* str, size_t length);
 
-struct BTE;
-struct Class;
+uint32_t next_id();
 
-struct ClassInstance
+struct ClassTypeInfo
 {
-    uint32_t id, ref_id;
-    const Class* _class;
-    std::vector<BTE> member_btes;
+    LengthPrefixedString name;
+    uint32_t library_id;
 
-    friend std::fstream& operator<<(std::fstream& out,
-            const ClassInstance& instance);
-
-    ClassInstance& operator=(const ClassInstance& copy);
+    stream& serialize(stream& out) const;
 };
 
-struct BTE
+struct ClassInfo
 {
-    uint8_t enum_val = 0x00;
-    uint8_t bte = 0x08;
-    union {
-        uint32_t int32;
-        float float32;
-        ClassInstance* instance;
-    };
+    uint32_t id;
+    LengthPrefixedString name;
+    std::vector<LengthPrefixedString> members;
 
-    BTE(uint32_t int32);
-    BTE(float float32);
-    BTE(ClassInstance* instance);
-    BTE(const BTE& other);
-    ~BTE() {}
-    BTE& operator=(const BTE& other);
+    stream& serialize(stream& out) const;
+};
 
-    friend std::fstream& operator<<(std::fstream& out,
-            const BTE& bte);
+struct AdditionalInfo
+{
+    private:
+        virtual stream& serialize(stream& out) const = 0;
+    public:
+        friend stream& operator<<(stream& out,
+                const AdditionalInfo& additional_info);
+};
+
+template <typename T>
+struct AdditionalInfo_impl : public AdditionalInfo
+{
+    public:
+        T value;
+
+        AdditionalInfo_impl(T value) : value(value) {}
+
+    private:
+        stream& serialize(stream& out) const override;
+};
+
+template <typename T>
+stream& AdditionalInfo_impl<T>::serialize(stream& out) const
+{
+    out << value;
+    return out;
+}
+
+struct MemberTypeInfo
+{
+    std::vector<uint8_t> type_enums;
+    std::vector<std::shared_ptr<AdditionalInfo>> additional_infos;
+
+    stream& serialize(stream& out) const;
+};
+
+struct ClassWithMembersAndTypes
+{
+    ClassInfo class_info;
+    MemberTypeInfo member_type_info;
+    uint32_t library_id;
+
+    stream& serialize(stream& out) const;
+};
+
+struct Class;
+
+struct BinaryArray
+{
+    uint32_t id;
+    uint32_t length;
+    Class* _class;
+
+    std::shared_ptr<AdditionalInfo> additional_info();
+
+    stream& serialize(stream& out) const;
 };
 
 struct Class
 {
-    static std::unordered_map<std::string, uint32_t> ids;
-    const LengthPrefixedString name;
-    const uint32_t library_id;
-    const std::vector<LengthPrefixedString> member_names;
-    const bool is_array = false;
+    LengthPrefixedString name;
+    std::vector<LengthPrefixedString> members;
+    uint32_t library_id;
+    MemberTypeInfo member_type_info;
 
-    ClassInstance instantiate(std::vector<BTE> btes) const;
+    ClassTypeInfo class_type_info();
+    ClassInfo class_info(uint32_t id);
+    std::shared_ptr<AdditionalInfo> additional_info();
+    ClassWithMembersAndTypes class_mem_types(uint32_t id);
+    BinaryArray binary_array(uint32_t id);
 };
 
-const Class Class_Color{
-    "SerializableColor"_lp,
-    0x00000002,
-    {
-        "r"_lp, "g"_lp, "b"_lp
-    }
-};
-
-struct SerializableColor
+struct Object
 {
-    float r, g, b;
-
-    ClassInstance serialize();
+    virtual stream& serialize(stream& out) const = 0;
 };
 
-const Class Class_Vector{
-    "SerializableVector3"_lp,
-    0x00000002,
-    {
-        "x"_lp, "y"_lp, "z"_lp
-    }
-};
-
-struct SerializableVector3
+template <typename T>
+struct Primitive : public Object
 {
-    float x, y, z;
+    T value;
 
-    ClassInstance serialize();
-};
+    Primitive(T value) : value(value) {}
 
-const Class Class_Children {
-    "SavedObjects.SavedObjectV2[]"_lp,
-    0x00000002,
+    stream& serialize(stream& out) const override
     {
+        return out << value;
     }
 };
 
-const Class Class_Board{
-    "SavedObjects.SavedCircuitBoard"_lp,
-    0x00000002,
+stream& operator<<(stream& out, const ClassWithMembersAndTypes& class_with);
+stream& operator<<(stream& out, const Object& object);
+
+template <Class& _class>
+struct ClassObject : public Object
+{
+    inline static uint32_t first_id = 0;
+    uint32_t id;
+    std::vector<Object*> values;
+
+    ClassObject(std::vector<Object*> values)
+        : values(values)
     {
-        "x"_lp, "z"_lp,
-        "color"_lp,
-        "LocalPosition"_lp,
-        "LocalEulerAngles"_lp,
-        "Children"_lp
+        id = next_id();
+        if(first_id == 0)
+            first_id = id;
     }
+
+    stream& serialize(stream& out) const override
+    {
+        if(id == first_id)
+            out << _class.class_mem_types(id);
+        else
+            out << (uint8_t)0x01 << id << first_id;
+        for(const auto& value : values)
+            out << *value;
+        return out;
+    }
+};
+
+stream& operator<<(stream& out, const BinaryArray& binary_array);
+
+template <Class& _class>
+struct ArrayObject : public Object, public std::vector<Object*>
+{
+    uint32_t id;
+
+    ArrayObject()
+    {
+        id = next_id();
+    }
+
+    stream& serialize(stream& out) const override
+    {
+        BinaryArray binary_array = _class.binary_array(id);
+        binary_array.length = size();
+        out << binary_array;
+        for(const auto& value : *this)
+            out << *value;
+        return out;
+    }
+};
+
+extern std::shared_ptr<AdditionalInfo> INT;
+extern std::shared_ptr<AdditionalInfo> FLOAT;
+
+extern Class saved_object;
+extern Class serialized_vector;
+extern Class serialized_color;
+extern Class board_class;
+
+struct SerializableVector3 : public ClassObject<serialized_vector>
+{
+    Primitive<float> x, y, z;
+
+    SerializableVector3(float x, float y, float z);
+};
+
+struct SerializableColor : public ClassObject<serialized_color>
+{
+    Primitive<float> r, g, b;
+
+    SerializableColor(float r, float g, float b);
+};
+
+struct Board : public ClassObject<board_class>
+{
+    Primitive<uint32_t> x, z;
+    SerializableColor color;
+    SerializableVector3 local_pos, local_angles;
+    ArrayObject<saved_object> children;
+
+    Board(uint32_t x, uint32_t z, SerializableColor color,
+            SerializableVector3 local_pos, SerializableVector3 local_angles);
 };
 
 class BoardGenerator

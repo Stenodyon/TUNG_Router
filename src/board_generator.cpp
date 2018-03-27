@@ -9,7 +9,7 @@ static const uint8_t header[] = {
     0x72, 0x70
 };
 
-uint32_t new_id()
+uint32_t next_id()
 {
     static uint32_t next_id = 1;
     return next_id++;
@@ -18,6 +18,12 @@ uint32_t new_id()
 LengthPrefixedString operator "" _lp(const char* str, size_t)
 {
     return LengthPrefixedString{str};
+}
+
+LengthPrefixedString LengthPrefixedString::operator+(const std::string & append)
+{
+    std::string new_value = value + append;
+    return LengthPrefixedString{new_value};
 }
 
 std::fstream& operator<<(std::fstream& out,
@@ -50,179 +56,197 @@ std::fstream& operator<<(std::fstream& out,
     return out;
 }
 
-std::unordered_map<std::string, uint32_t> Class::ids;
-
-ClassInstance Class::instantiate(std::vector<BTE> btes) const
+stream& ClassTypeInfo::serialize(stream& out) const
 {
-    uint32_t id = new_id();
-    uint32_t ref_id = id;
-    if(ids.find(name.value) != ids.end())
-        ref_id = ids[name.value];
-    else
-        ids[name.value] = id;
-
-    return ClassInstance{ id, ref_id, this, btes };
-}
-
-static const uint8_t verbose_class = 0x05;
-static const uint8_t class_ref = 0x01;
-
-std::fstream& operator<<(std::fstream& out,
-        const BTE& bte)
-{
-    if(bte.enum_val == 0x00) // primitive
-    {
-        out << bte.bte;
-    }
-    else if(bte.enum_val == 0x04) // class
-    {
-        out << bte.instance->_class->name;
-        out << bte.instance->_class->library_id;
-    }
-    else
-    {
-        assert(false);
-    }
+    out << name;
+    out << library_id;
     return out;
 }
 
-std::fstream& operator<<(std::fstream& out,
-        const std::vector<BTE> & btes)
+stream& operator<<(stream& out, const ClassTypeInfo& class_type_info)
 {
-    for(const auto& bte : btes)
-        out << bte.enum_val;
-    for(const auto& bte : btes)
-        out << bte;
-    for(const auto& bte : btes)
-    {
-        if(bte.enum_val == 0)
-        {
-            if(bte.bte == 0x08)
-                out << bte.int32;
-            else if(bte.bte == 0x0B)
-                out << bte.float32;
-            else
-                assert(false);
-        }
-        else if(bte.enum_val == 0x04)
-        {
-            out << *bte.instance;
-        }
-        else
-        {
-            assert(false);
-        }
-    }
+    return class_type_info.serialize(out);
+}
+
+stream& ClassInfo::serialize(stream& out) const
+{
+    out << id;
+    out << name;
+    out << (uint32_t)(members.size());
+    for(const auto& member : members)
+        out << member;
+
     return out;
 }
 
-std::fstream& operator<<(std::fstream& out,
-        const ClassInstance& instance)
+stream& operator<<(stream& out, const ClassInfo& class_info)
 {
-    if(instance.id == instance.ref_id)
-    {
-        out << verbose_class;
-        out << instance.id;
-        out << instance._class->name;
-        uint32_t member_count = instance._class->member_names.size();
-        out << member_count;
-        for(const auto& member_name : instance._class->member_names)
-            out << member_name;
-        out << instance.member_btes;
-        out << instance._class->library_id;
-    }
-    else
-    {
-        out << class_ref;
-        out << instance.id;
-        out << instance.ref_id;
-    }
+    return class_info.serialize(out);
+}
+
+stream& operator<<(stream& out,
+        const AdditionalInfo& additional_info)
+{
+    return additional_info.serialize(out);
+}
+
+stream& MemberTypeInfo::serialize(stream& out) const
+{
+    for(const auto& type : type_enums)
+        out << type;
+    for(const auto& additional_info : additional_infos)
+        out << *additional_info;
     return out;
 }
 
-ClassInstance& ClassInstance::operator=(const ClassInstance& copy)
+stream& operator<<(stream& out,
+        const MemberTypeInfo& member_type_info)
 {
-    id = copy.id; ref_id = copy.ref_id;
-    _class = copy._class;
-    member_btes = copy.member_btes;
-    return *this;
+    return member_type_info.serialize(out);
 }
 
-BTE::BTE(uint32_t int32)
-    : enum_val(0), bte(0x08), int32(int32)
-{}
-
-BTE::BTE(float float32)
-    : enum_val(0), bte(0x0B), float32(float32)
-{}
-
-BTE::BTE(ClassInstance* instance)
-    : enum_val(0x04), bte(0), instance(instance)
-{}
-
-BTE::BTE(const BTE& other)
-    : enum_val(other.enum_val), bte(other.bte)
+stream& ClassWithMembersAndTypes::serialize(stream& out) const
 {
-    if(enum_val == 0)
-    {
-        if(bte == 0x08)
-            int32 = other.int32;
-        else if(bte == 0x0B)
-            float32 = other.float32;
-        else
-            assert(false);
-    }
-    else if(enum_val == 0x04)
-    {
-        instance = other.instance;
-    }
-    else
-    {
-        assert(false);
-    }
+    out << (uint8_t)0x05;
+    out << class_info;
+    out << member_type_info;
+    out << library_id;
+    return out;
 }
 
-BTE& BTE::operator=(const BTE& other)
+stream& operator<<(stream& out,
+        const ClassWithMembersAndTypes& class_with)
 {
-    enum_val = other.enum_val;
-    bte = other.bte;
-    if(enum_val == 0)
-    {
-        if(bte == 0x08)
-            int32 = other.int32;
-        else if(bte == 0x0B)
-            float32 = other.float32;
-        else
-            assert(false);
-    }
-    else if(enum_val == 0x04)
-    {
-        instance = other.instance;
-    }
-    else
-    {
-        assert(false);
-    }
-    return *this;
+    return class_with.serialize(out);
 }
 
-ClassInstance SerializableColor::serialize()
+ClassTypeInfo Class::class_type_info()
 {
-    return Class_Color.instantiate({
-            BTE((float)r),
-            BTE((float)g),
-            BTE((float)b),
-            });
+    return ClassTypeInfo{ name, library_id };
 }
 
-ClassInstance SerializableVector3::serialize()
+ClassInfo Class::class_info(uint32_t id)
 {
-    return Class_Color.instantiate({
-            BTE((float)x),
-            BTE((float)y),
-            BTE((float)z),
-            });
+    return ClassInfo{ id, name, members };
 }
+
+std::shared_ptr<AdditionalInfo> Class::additional_info()
+{
+    return std::shared_ptr<AdditionalInfo>(
+            new AdditionalInfo_impl<ClassTypeInfo>(class_type_info()));
+}
+
+ClassWithMembersAndTypes Class::class_mem_types(uint32_t id)
+{
+    return ClassWithMembersAndTypes{
+        class_info(id),
+        member_type_info,
+        library_id
+    };
+}
+
+BinaryArray Class::binary_array(uint32_t id)
+{
+    return BinaryArray{ id, 0, this };
+}
+
+std::shared_ptr<AdditionalInfo> BinaryArray::additional_info()
+{
+    ClassTypeInfo class_type_info
+        = static_cast<AdditionalInfo_impl<ClassTypeInfo>*>(
+                _class->additional_info().get())->value;
+    return std::shared_ptr<AdditionalInfo>(
+            new AdditionalInfo_impl<ClassTypeInfo>(
+                ClassTypeInfo{class_type_info.name + "[]",
+                    class_type_info.library_id}));
+}
+
+stream& BinaryArray::serialize(stream& out) const
+{
+    out << (uint8_t)0x07;
+    out << id;
+    out << (uint8_t)0x00;
+    out << (uint32_t)0x01;
+    out << length;
+    out << (uint8_t)0x04;
+    out << *(_class->additional_info());
+    return out;
+}
+
+stream& operator<<(stream& out, const BinaryArray& binary_array)
+{
+    return binary_array.serialize(out);
+}
+
+SerializableVector3::SerializableVector3(float _x, float _y, float _z)
+    : x(_x), y(_y), z(_z),
+    ClassObject<serialized_vector>({&x, &y, &z})
+{
+}
+
+SerializableColor::SerializableColor(float _r, float _g, float _b)
+    : r(_r), g(_g), b(_b),
+    ClassObject<serialized_color>({&r, &g, &b})
+{
+}
+
+Board::Board(uint32_t _x, uint32_t _z, SerializableColor _color,
+        SerializableVector3 _local_pos, SerializableVector3 _local_angles)
+    : x(_x), z(_z),
+    color(_color), local_pos(_local_pos), local_angles(_local_angles),
+    ClassObject<board_class>(
+            {&x, &z, &color, &local_pos, &local_angles, &children})
+{
+}
+
+stream& operator<<(stream& out, const Object& object)
+{
+    return object.serialize(out);
+}
+
+std::shared_ptr<AdditionalInfo> INT(new AdditionalInfo_impl<uint8_t>(0x08));
+std::shared_ptr<AdditionalInfo> FLOAT(new AdditionalInfo_impl<uint8_t>(0x0B));
+
+Class saved_object { "SavedObjects.SavedObjectV2"_lp,
+    {}, 0x00000002, {}
+};
+
+Class serialized_vector { "SerializableVector3"_lp,
+    { "x"_lp, "y"_lp, "z"_lp },
+    0x00000002,
+    {
+        { 0x00, 0x00, 0x00 },
+        { FLOAT, FLOAT, FLOAT }
+    }
+};
+
+Class serialized_color { "SerializableColor"_lp,
+    { "r"_lp, "g"_lp, "b"_lp },
+    0x00000002,
+    {
+        { 0x00, 0x00, 0x00 },
+        { FLOAT, FLOAT, FLOAT }
+    }
+};
+
+Class board_class { "SavedObjects.SavedCircuitBoard"_lp,
+    { "x"_lp, "z"_lp,
+        "color"_lp, "LocalPosition"_lp, "LocalEulerAngles"_lp,
+        "Children"_lp
+    },
+    0x00000002,
+    {
+        { 0x00, 0x00,
+            0x04, 0x04, 0x04, 0x04
+        },
+        { INT, INT,
+            serialized_color.additional_info(),
+            serialized_vector.additional_info(),
+            serialized_vector.additional_info(),
+            saved_object.binary_array(0).additional_info() // Eww
+        }
+    }
+};
 
 void BoardGenerator::generate(const std::string & filename)
 {
@@ -232,19 +256,10 @@ void BoardGenerator::generate(const std::string & filename)
         std::cerr << "Could not open file " << filename << std::endl;
         exit(-1);
     }
-    auto board_color = (SerializableColor{0., .5, 0.}).serialize();
-    auto board_local_pos = (SerializableVector3{0., 0., 0.}).serialize();
-    auto board_local_angles = (SerializableVector3{0., 0., 0.}).serialize();
     file.write((char*)header, sizeof(header));
-    file << Class_Board.instantiate(
-            {
-                BTE((uint32_t)3),
-                BTE((uint32_t)4),
-                BTE(&board_color),
-                BTE(&board_local_pos),
-                BTE(&board_local_angles),
-            }
-            );
-    char end = 0x0B;
-    file.write(&end, 1);
+    SerializableColor color{0., 0.5, 0.};
+    SerializableVector3 pos{0.0, 0.0, 0.0};
+    SerializableVector3 angles{0.0, 0.0, 0.0};
+    file << Board{10, 15, color, pos, angles};
+    file << (uint8_t)0x0B;
 }
