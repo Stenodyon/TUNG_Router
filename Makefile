@@ -3,7 +3,8 @@ NAME=router
 SRC_DIR=src/
 BUILD_DIR=build/
 
-FLAGS=-std=c++17 -Wall -Wextra -Wpedantic -Wno-sign-compare -fms-extensions -flto -I./lib/include
+FLAGS=-std=c++17 -Wall -Wextra -Wpedantic -Wno-sign-compare -Wno-reorder \
+      -fms-extensions -flto -I./lib/include
 LIBS=-L./lib/lib/x64/ -lSDL2
 
 # -----------------------------------------------------
