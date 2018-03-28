@@ -4,139 +4,111 @@
 
 #include "fileutils.h"
 #include "stringutils.h"
+#include "command_parser.hpp"
 
 int_t get_side(const std::string & name);
 void place_chip(grid<int> & map, const chip & ic);
 
 routing_problem::routing_problem(std::string filename) : map(32, 32)
 {
-    std::string contents = read_file(filename);
-    std::vector<std::string> lines = split(contents, "\n");
-    uint_t line_count = 1;
+    // TODO: Move all those actions as class methods of routing_problem
+    // TODO: Custom parser for the side (+create Side enum)
     std::optional<vi2> board_size;
-    for(std::string line : lines)
-    {
-        line = line.substr(0, line.find("#"));
-        trim_spaces(line);
-
-        std::vector<std::string> components = split(line, "\\s+");
-        if(components.size() == 0
-                || (components.size() == 1 && components[0] == ""))
-            continue;
-        if(components[0] == "board") // board size
+    CommandParser parser;
+    std::function<bool(void)> precondition =
+        [&board_size]() {
+            bool value = (bool)board_size;
+            if(!value)
+                std::cerr << "Board size not set" << std::endl;
+            return value;
+        };
+    std::function<bool(int,int)> board_action =
+        [&board_size, this]
+        (int width, int height)
         {
-            if(components.size() != 3)
-            {
-                std::cerr << line_count << ": ";
-                std::cerr << "parse error: '" << line << "'" << std::endl;
-                exit(-1);
-            }
-            int width = std::stoi(components[1]);
-            int height = std::stoi(components[2]);
             board_size = {width, height};
-            map = grid<int>(width, height);
-        }
-        else if(!board_size)
+            this->map = grid<int>(width, height);
+            return true;
+        };
+    std::function<bool(std::string, int, int)> chip_action =
+        [&precondition, this]
+        (std::string name, int width, int height)
         {
-            std::cerr << line_count << ": ";
-            std::cerr << "Undefined board size" << std::endl;
-            exit(-1);
-        }
-        else if(components[0] == "chip") // chip type definition
+            if(!precondition())
+                return false;
+            this->types.insert({name, {width, height}});
+            return true;
+        };
+    std::function<bool(std::string, std::string, int, std::string)>
+        pin_action =
+        [&precondition, this](std::string type_name, std::string _side,
+                int offset, std::string label)
         {
-            if(components.size() != 4)
-            {
-                std::cerr << line_count << ": ";
-                std::cerr << "parse error: '" << line << "'" << std::endl;
-                exit(-1);
-            }
-            std::string name = components[1];
-            uint_t width = (uint_t)std::stoi(components[2]);
-            uint_t height = (uint_t)std::stoi(components[3]);
-            types.insert({name, {width, height}});
-        }
-        else if(components[0] == "pin")
-        {
-            if(components.size() != 5)
-            {
-                std::cerr << line_count << ": parse error: '" << line << "'" << std::endl;
-                exit(-1);
-            }
-            std::string type_name = components[1];
-            int_t side = get_side(components[2]);
-            int position = std::stoi(components[3]);
-            std::string label = components[4];
-
+            if(!precondition())
+                return false;
+            int_t side = get_side(_side);
             if(side == -1)
             {
-                std::cerr << line_count << ": ";
-                std::cerr << "Unknown side " << components[2] << std::endl;
-                exit(-1);
+                std::cerr << "Unknown side " << _side << std::endl;
+                return false;
             }
-            if(types.find(type_name) == types.end())
+            if(this->types.find(type_name) == this->types.end())
             {
-                std::cerr << line_count << ": ";
                 std::cerr << "Undefined type " << type_name << std::endl;
-                exit(-1);
+                return false;
             }
-            chip_type & type = types.at(type_name);
-            type.add_pin(side, position, label);
-        }
-        else if(components[0] == "instance")
+            chip_type & type = this->types.at(type_name);
+            type.add_pin(side, offset, label);
+            return true;
+        };
+    std::function<bool(std::string, int, int, std::string)> instance_action =
+        [&precondition, this]
+        (std::string type_name, int x_pos, int y_pos, std::string name)
         {
-            if(components.size() != 5)
+            if(this->types.find(type_name) == this->types.end())
             {
-                std::cerr << line_count << ": parse error: '" << line << "'" << std::endl;
-                exit(-1);
-            }
-            std::string name = components[1];
-            std::string type_name = components[2];
-            int x_pos = std::stoi(components[3]);
-            int y_pos = std::stoi(components[4]);
-            if(types.find(type_name) == types.end())
-            {
-                std::cerr << line_count << ": ";
                 std::cerr << "Undefined type " << type_name << std::endl;
-                exit(-1);
+                return false;
             }
-            chip_type & type = types.at(type_name);
-            chips.insert({name, {{x_pos, y_pos}, type}});
-        }
-        else if(components[0] == "net")
+            chip_type & type = this->types.at(type_name);
+            this->chips.insert({name, {{x_pos, y_pos}, type}});
+            return true;
+        };
+    std::function<bool(std::string, std::string, std::string)> net_action =
+        [&precondition, this]
+        (std::string name, std::string chip_name, std::string pin_label)
         {
-            if(components.size() != 4)
+            if(this->chips.find(chip_name) == this->chips.end())
             {
-                std::cerr << line_count << ": parse error: '" << line << "'" << std::endl;
-                exit(-1);
-            }
-            std::string name = components[1];
-            std::string chip_name = components[2];
-            std::string pin_label = components[3];
-            if(chips.find(chip_name) == chips.end())
-            {
-                std::cerr << line_count << ": ";
                 std::cerr << "Undefined chip " << chip_name << std::endl;
-                exit(-1);
+                return false;
             }
             chip & _chip = chips.at(chip_name);
             if(!_chip.type.has_pin_label(pin_label))
             {
-                std::cerr << line_count << ": ";
                 std::cerr << "Chip " << chip_name << " has no pin labelled "
                     << pin_label << std::endl;
-                exit(-1);
+                return false;
             }
             const auto& [side, pin_number] = _chip.type.get_pin_by_label(pin_label);
             auto pin_pos = _chip.get_pin_pos(side, pin_number);
-            nets[name].push_back(pin_pos);
-        }
-        else
-        {
-            std::cerr << line_count << ": parse error: '" << line << "'" << std::endl;
-            exit(-1);
-        }
-        line_count++;
+            this->nets[name].push_back(pin_pos);
+            return true;
+        };
+    parser.add_command("board", board_action);
+    parser.add_command("chip", chip_action);
+    parser.add_command("pin", pin_action);
+    parser.add_command("instance", instance_action);
+    parser.add_command("net", net_action);
+
+    std::string contents = read_file(filename);
+    try {
+        parser.parse(contents);
+    } catch(parse_error& error) {
+        std::cerr << error.what();
+        exit(-1);
     }
+
     map.fill(0);
     for(const auto & [net_name, net] : nets)
     {

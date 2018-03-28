@@ -58,4 +58,27 @@ TEST_CASE("Command Parser")
         parser.parse("test valid2 31");
         REQUIRE(result);
     }
+
+    SECTION("Fails with too many arguments")
+    {
+        std::function<bool(int32_t)> action =
+            [](int32_t){return true;};
+        parser.add_command("test", action);
+        REQUIRE_THROWS_AS(parser.parse("test 31 too many"), parse_error);
+    }
+
+    SECTION("Fails with too little arguments")
+    {
+        std::function<bool(int32_t, std::string)> action =
+            [](int32_t, std::string){return true;};
+        parser.add_command("test", action);
+        REQUIRE_THROWS_AS(parser.parse("test 31"), parse_error);
+    }
+
+    SECTION("Does not fail on empty lines")
+    {
+        std::function<bool(void)> action = [](){return true;};
+        parser.add_command("test", action);
+        REQUIRE_NOTHROW(parser.parse("test\n\ntest"));
+    }
 }

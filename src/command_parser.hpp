@@ -15,9 +15,10 @@ namespace parser {
 
     template <>
     std::string parse_value<std::string>(const std::string& in);
-
     template <>
     int32_t parse_value<int32_t>(const std::string& in);
+    template <>
+    int64_t parse_value<int64_t>(const std::string& in);
 }
 
 // Some template helpers
