@@ -123,6 +123,7 @@ struct Class
 struct Object
 {
     virtual stream& serialize(stream& out) const = 0;
+    virtual void set_id(uint32_t id) const {}
 };
 
 struct NullObject : public Object
@@ -155,27 +156,35 @@ template <Class& _class>
 struct ClassObject : public Object
 {
     static uint32_t first_id;
+    mutable uint32_t id;
     std::vector<Object*> values;
 
     ClassObject(std::vector<Object*> values)
-        : values(values)
+        : id(0), values(values)
     {
     }
 
-    stream& serialize(stream& out) const override
+    virtual const std::vector<const Object*> get_values() const = 0;
+
+    void set_id(uint32_t _id) const override
     {
-        uint32_t id = next_id();
+        id = _id;
         if(first_id == 0)
         {
             first_id = id;
             std::cout << "ClassObject<" << _class.name.value << ">::first_id = "
                 << first_id << std::endl;
         }
+    }
+
+    stream& serialize(stream& out) const override
+    {
+        if(id == 0) set_id(next_id());
         if(id == first_id)
             out << _class.class_mem_types(id);
         else
             out << (uint8_t)0x01 << id << first_id;
-        for(const auto& value : values)
+        for(const auto& value : get_values())
             out << *value;
         return out;
     }
@@ -184,7 +193,7 @@ struct ClassObject : public Object
 stream& operator<<(stream& out, const BinaryArray& binary_array);
 
 template <Class& _class>
-struct ArrayObject : public Object, public std::vector<Object*>
+struct ArrayObject : public Object, public std::vector<const Object*>
 {
     ArrayObject()
     {
@@ -197,20 +206,27 @@ struct ArrayObject : public Object, public std::vector<Object*>
         binary_array.length = size();
         out << binary_array;
         for(const auto& value : *this)
+        {
+            uint32_t item_id = next_id();
+            out << (uint8_t)0x09 << item_id;
+            value->set_id(item_id);
+        }
+        for(const auto& value : *this)
             out << *value;
         return out;
     }
 };
 
-extern std::shared_ptr<AdditionalInfo> BOOL;
-extern std::shared_ptr<AdditionalInfo> INT;
-extern std::shared_ptr<AdditionalInfo> FLOAT;
+extern std::shared_ptr<AdditionalInfo> BOOL_info;
+extern std::shared_ptr<AdditionalInfo> INT_info;
+extern std::shared_ptr<AdditionalInfo> FLOAT_info;
 
 extern Class saved_object;
 extern Class serialized_vector;
 extern Class serialized_color;
 extern Class board_class;
 extern Class peg_class;
+extern Class snapping_peg_class;
 extern Class wire_class;
 
 struct SerializableVector3 : public ClassObject<serialized_vector>
@@ -219,9 +235,12 @@ struct SerializableVector3 : public ClassObject<serialized_vector>
 
     SerializableVector3(float x, float y, float z);
 
+    const std::vector<const Object*> get_values() const override;
+
     float distance_to(const SerializableVector3& other) const;
     SerializableVector3 middle(const SerializableVector3& other) const;
     SerializableVector3 look_at(const SerializableVector3& other) const;
+    SerializableVector3 operator+(const SerializableVector3& other) const;
 
     SerializableVector3 copy() const;
 };
@@ -231,17 +250,8 @@ struct SerializableColor : public ClassObject<serialized_color>
     Primitive<float> r, g, b;
 
     SerializableColor(float r, float g, float b);
-};
 
-struct Board : public ClassObject<board_class>
-{
-    Primitive<uint32_t> x, z;
-    SerializableColor color;
-    SerializableVector3 local_pos, local_angles;
-    ArrayObject<saved_object> children;
-
-    Board(uint32_t x, uint32_t z, SerializableColor color,
-            SerializableVector3 local_pos, SerializableVector3 local_angles);
+    const std::vector<const Object*> get_values() const override;
 };
 
 struct Peg : public ClassObject<peg_class>
@@ -250,6 +260,20 @@ struct Peg : public ClassObject<peg_class>
     NullObject children;
 
     Peg(SerializableVector3 local_pos, SerializableVector3 local_angles);
+
+    virtual const SerializableVector3 get_pos() const;
+    const std::vector<const Object*> get_values() const override;
+
+    float distance_to(const Peg& other) const;
+};
+
+struct SnappingPeg : public Peg
+{
+    uint8_t side;
+
+    SnappingPeg(SerializableVector3 local_pos, uint8_t side);
+
+    virtual const SerializableVector3 get_pos() const override;
 
     float distance_to(const Peg& other) const;
 };
@@ -262,11 +286,37 @@ struct Wire : public ClassObject<wire_class>
     NullObject children;
 
     Wire(Peg peg_a, Peg peg_b);
+
+    const std::vector<const Object*> get_values() const override;
+};
+
+struct Board : public ClassObject<board_class>
+{
+    Primitive<uint32_t> x, z;
+    SerializableColor color;
+    SerializableVector3 local_pos, local_angles;
+    mutable ArrayObject<saved_object> children;
+
+    std::vector<std::shared_ptr<Peg>> pegs_container;
+    std::unordered_map<vi2, Peg*> pegs;
+    std::vector<std::shared_ptr<Wire>> wires;
+    std::vector<std::shared_ptr<Board>> boards;
+
+    Board(uint32_t x, uint32_t z, SerializableColor color,
+            SerializableVector3 local_pos, SerializableVector3 local_angles);
+
+    const std::vector<const Object*> get_values() const override;
+
+    Peg* add_peg(const vi2& pos);
+    Peg* add_snapping_peg(const vi2& pos, uint8_t side);
+    void add_wire(const vi2& from, const vi2& to);
+    void add_wire(Peg* from, Peg* to);
+    Board* add_board(const vi2& pos, const vu2& size);
 };
 
 class BoardGenerator
 {
     private:
     public:
-        void generate(const std::string& filename);
+        void generate(const std::string& filename, Board& board);
 };

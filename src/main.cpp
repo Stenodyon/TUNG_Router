@@ -17,7 +17,12 @@ grid<char> render(const grid<int> & map);
 void print(const grid<char> & grid_render);
 void place_pegs(grid<int> & map, const std::vector<vi2> & path);
 char merge_tiles(const char & prev, const char new_char);
+void generate(const vu2& size, const std::vector<std::vector<vi2>>& paths);
 
+#ifdef _TESTING
+#define CATCH_CONFIG_MAIN
+#include "catch.hpp"
+#else
 int main(int argc, char * argv[])
 {
     if(argc != 2 && argc != 3)
@@ -43,12 +48,12 @@ int main(int argc, char * argv[])
     };
     auto paths = _router.route();
 
-    BoardGenerator generator;
-    generator.generate("test_board.tungboard");
+    generate({width, height}, paths);
 
     graphics.loop();
     return 0;
 }
+#endif
 
 grid<char> render(const grid<int> & map)
 {
@@ -97,4 +102,30 @@ char merge_tiles(const char & prev, const char new_char)
     else if(prev == '-' && new_char == '|') return '+';
     else if(prev == '|' && new_char == '-') return '+';
     else return '*';
+}
+
+void generate(const vu2& size, const std::vector<std::vector<vi2>>& paths)
+{
+    std::vector<vi2> pegs;
+    std::vector<std::pair<vi2, vi2>> connections;
+
+    for(const auto& path : paths)
+    {
+        for(const auto& node : path)
+            pegs.push_back(node);
+        for(uint32_t index = 1; index < path.size(); index++)
+            connections.push_back({path[index-1], path[index]});
+    }
+
+    const auto& [width, height] = size;
+    Board board{width, height, {0., .5, 0.}, {0., 0., 0.}, {0., 0., 0.}};
+
+    std::unordered_map<vi2, Peg*> phys_pegs;
+    for(auto peg : pegs)
+        phys_pegs[peg] = board.add_peg(peg);
+    for(auto [from, to] : connections)
+        board.add_wire(phys_pegs[from], phys_pegs[to]);
+
+    BoardGenerator generator;
+    generator.generate("test_board.tungboard", board);
 }

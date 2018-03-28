@@ -2,6 +2,7 @@ NAME=router
 
 SRC_DIR=src/
 BUILD_DIR=build/
+TESTS_DIR=tests/
 
 FLAGS=-std=c++17 -Wall -Wextra -Wpedantic -Wno-sign-compare -Wno-reorder \
       -fms-extensions -flto -I./lib/include
@@ -15,6 +16,9 @@ BIN_TEST=$(NAME).test.exe
 
 SRC=$(shell find $(SRC_DIR) -type f -name '*.cpp')
 OBJ=$(SRC:$(SRC_DIR)%.cpp=$(BUILD_DIR)%.o)
+
+TEST_SRC=$(shell find $(TESTS_DIR) -type f -name '*.cpp')
+TEST_OBJ=$(TEST_SRC:$(TESTS_DIR)%.cpp=$(BUILD_DIR)%.o)
 
 default: release
 
@@ -40,9 +44,13 @@ $(BIN): $(OBJ)
 $(BIN_DEBUG): $(OBJ)
 	g++ $(FLAGS) $(OBJ) $(LIBS) -o $(BIN_DEBUG)
 
-$(BIN_TEST): $(OBJ)
-	g++ $(FLAGS) $(OBJ) $(LIBS) -o $(BIN_TEST)
+$(BIN_TEST): $(OBJ) $(TEST_OBJ)
+	g++ $(FLAGS) $(OBJ) $(TEST_OBJ) $(LIBS) -o $(BIN_TEST)
 
 $(BUILD_DIR)%.o: $(SRC_DIR)%.cpp
 	@mkdir -p $(dir $@)
 	g++ -c $< $(FLAGS) -o $@
+
+$(BUILD_DIR)%.o: $(TESTS_DIR)%.cpp
+	@mkdir -p $(dir $@)
+	g++ -c $< $(FLAGS) -I./src -o $@

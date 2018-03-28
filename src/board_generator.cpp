@@ -3,6 +3,9 @@
 
 #include <cstring>
 
+// TODO snapping peg direction & wiring
+// TODO clean up the ClassObject constructor
+
 static const uint8_t header[] = {
     0x00, 0x01, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x01, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0x02, 0x00, 0x00, 0x00, 0x0F, 0x41,
@@ -196,6 +199,11 @@ SerializableVector3::SerializableVector3(float _x, float _y, float _z)
 {
 }
 
+const std::vector<const Object*> SerializableVector3::get_values() const
+{
+    return {&x, &y, &z};
+}
+
 float SerializableVector3::distance_to(const SerializableVector3& other) const
 {
     float _x = other.x - x;
@@ -235,9 +243,23 @@ SerializableVector3 SerializableVector3::look_at(const SerializableVector3& othe
     };
 }
 
+SerializableVector3 SerializableVector3::operator+(const SerializableVector3& other) const
+{
+    return SerializableVector3{
+        x + other.x,
+        y + other.y,
+        z + other.z
+    };
+}
+
 SerializableVector3 SerializableVector3::copy() const
 {
     return SerializableVector3(x, y, z);
+}
+
+const std::vector<const Object*> SerializableColor::get_values() const
+{
+    return {&r, &g, &b};
 }
 
 SerializableColor::SerializableColor(float _r, float _g, float _b)
@@ -255,10 +277,108 @@ Board::Board(uint32_t _x, uint32_t _z, SerializableColor _color,
 {
 }
 
+const std::vector<const Object*> Board::get_values() const
+{
+    children.clear();
+    for(auto peg : pegs_container)
+        children.push_back(peg.get());
+    for(auto wire : wires)
+        children.push_back(wire.get());
+    for(auto board : boards)
+        children.push_back(board.get());
+    return {&x, &z, &color, &local_pos, &local_angles, &children};
+}
+
+
+Peg* Board::add_peg(const vi2& pos)
+{
+    if(pegs.find(pos) == pegs.end())
+    {
+        auto new_x = x - 1 - pos.x;
+        auto new_z = pos.y;
+        auto peg = std::make_shared<Peg>(
+            SerializableVector3{ 0.15f + new_x * 0.30f, 0.075f, 0.15f + new_z * 0.30f },
+            SerializableVector3{ 0.f, 0.f, 0.f }
+        );
+        pegs_container.push_back(peg);
+        pegs[pos] = peg.get();
+    }
+    return pegs[pos];
+}
+
+Peg* Board::add_snapping_peg(const vi2& pos, uint8_t side)
+{
+    if(pegs.find(pos) == pegs.end())
+    {
+        auto new_x = x - 1 - pos.x;
+        auto new_z = pos.y;
+        auto peg = std::make_shared<SnappingPeg>(
+            SerializableVector3{ 0.15f + new_x * 0.30f, 0.075f, 0.15f + new_z * 0.30f },
+            side
+        );
+        pegs_container.push_back(peg);
+        pegs[pos] = peg.get();
+    }
+    return pegs[pos];
+}
+
+void Board::add_wire(const vi2& from, const vi2& to)
+{
+    if(pegs.find(from) == pegs.end())
+        return;
+    if(pegs.find(to) == pegs.end())
+        return;
+    auto wire = std::make_shared<Wire>(*(pegs[from]), *(pegs[to]));
+    wires.push_back(wire);
+}
+
+void Board::add_wire(Peg* from, Peg* to)
+{
+    auto wire = std::make_shared<Wire>(*from, *to);
+    wires.push_back(wire);
+}
+
+Board* Board::add_board(const vi2& pos, const vu2& size)
+{
+    auto new_x = x - 1 - pos.x - (size.x - 1);
+    auto new_z = pos.y;
+    auto board = std::make_shared<Board>(
+            size.x, size.y,
+            SerializableColor{ 0., 0., 0. },
+            SerializableVector3{ new_x * 0.30f, 5 * 0.075f, new_z * 0.30f },
+            SerializableVector3{ 0.f, 0.f, 0.f }
+            );
+    boards.push_back(board);
+    return board.get();
+}
+
 Peg::Peg(SerializableVector3 _local_pos, SerializableVector3 _local_angles)
     : local_pos(_local_pos), local_angles(_local_angles),
     ClassObject<peg_class>({&local_pos, &local_angles, &children})
 {
+}
+
+const SerializableVector3 Peg::get_pos() const
+{
+    return local_pos;
+}
+
+SnappingPeg::SnappingPeg(SerializableVector3 _local_pos, uint8_t side)
+    : Peg(_local_pos, {0., std::fmod(side * 90.f, 360.) - 180, 0.}),
+    side(side)
+{
+}
+
+const SerializableVector3 directions[4] = {
+    { 0.075, 0., 0. },
+    { 0., 0., -.075 },
+    { -.075, 0., 0. },
+    { 0., 0., 0.075 }
+};
+
+const std::vector<const Object*> Peg::get_values() const
+{
+    return {&local_pos, &local_angles, &children};
 }
 
 float Peg::distance_to(const Peg& other) const
@@ -266,16 +386,26 @@ float Peg::distance_to(const Peg& other) const
     return local_pos.distance_to(other.local_pos);
 }
 
+const SerializableVector3 SnappingPeg::get_pos() const
+{
+    return local_pos + directions[side];
+}
+
 Wire::Wire(Peg peg_a, Peg peg_b)
     //: input_input(true), length(peg_a.distance_to(peg_b)),
     : input_input(true),
-    length(peg_a.local_pos.distance_to(peg_b.local_pos)),
-    local_pos(peg_a.local_pos.middle(peg_b.local_pos)),
-    local_angles(peg_a.local_pos.look_at(peg_b.local_pos)),
+    length(peg_a.get_pos().distance_to(peg_b.get_pos())),
+    local_pos(peg_a.get_pos().middle(peg_b.get_pos())),
+    local_angles(peg_a.get_pos().look_at(peg_b.get_pos())),
     ClassObject<wire_class>(
             {&input_input, &length, &local_pos, &local_angles, &children})
 {
     local_pos.y = local_pos.y + .27f;
+}
+
+const std::vector<const Object*> Wire::get_values() const
+{
+    return {&input_input, &length, &local_pos, &local_angles, &children};
 }
 
 stream& operator<<(stream& out, const Object& object)
@@ -283,9 +413,9 @@ stream& operator<<(stream& out, const Object& object)
     return object.serialize(out);
 }
 
-std::shared_ptr<AdditionalInfo> BOOL(new AdditionalInfo_impl<uint8_t>(0x01));
-std::shared_ptr<AdditionalInfo> INT(new AdditionalInfo_impl<uint8_t>(0x08));
-std::shared_ptr<AdditionalInfo> FLOAT(new AdditionalInfo_impl<uint8_t>(0x0B));
+std::shared_ptr<AdditionalInfo> BOOL_info(new AdditionalInfo_impl<uint8_t>(0x01));
+std::shared_ptr<AdditionalInfo> INT_info(new AdditionalInfo_impl<uint8_t>(0x08));
+std::shared_ptr<AdditionalInfo> FLOAT_info(new AdditionalInfo_impl<uint8_t>(0x0B));
 
 Class saved_object { "SavedObjects.SavedObjectV2"_lp,
     {}, 0x00000002, {}
@@ -296,7 +426,7 @@ Class serialized_vector { "SerializableVector3"_lp,
     0x00000002,
     {
         { 0x00, 0x00, 0x00 },
-        { FLOAT, FLOAT, FLOAT }
+        { FLOAT_info, FLOAT_info, FLOAT_info }
     }
 };
 
@@ -305,7 +435,7 @@ Class serialized_color { "SerializableColor"_lp,
     0x00000002,
     {
         { 0x00, 0x00, 0x00 },
-        { FLOAT, FLOAT, FLOAT }
+        { FLOAT_info, FLOAT_info, FLOAT_info }
     }
 };
 
@@ -319,7 +449,7 @@ Class board_class { "SavedObjects.SavedCircuitBoard"_lp,
         { 0x00, 0x00,
             0x04, 0x04, 0x04, 0x04
         },
-        { INT, INT,
+        { INT_info, INT_info,
             serialized_color.additional_info(),
             serialized_vector.additional_info(),
             serialized_vector.additional_info(),
@@ -329,6 +459,23 @@ Class board_class { "SavedObjects.SavedCircuitBoard"_lp,
 };
 
 Class peg_class { "SavedObjects.SavedPeg"_lp,
+    {
+        "LocalPosition"_lp,
+        "LocalEulerAngles"_lp,
+        "Children"_lp
+    },
+    0x00000002,
+    {
+        { 0x04, 0x04, 0x04 },
+        {
+            serialized_vector.additional_info(),
+            serialized_vector.additional_info(),
+            saved_object.binary_array(0).additional_info() // Eww
+        }
+    }
+};
+
+Class snapping_peg_class { "SavedObjects.SavedSnappingPeg"_lp,
     {
         "LocalPosition"_lp,
         "LocalEulerAngles"_lp,
@@ -357,7 +504,7 @@ Class wire_class { "SavedObjects.SavedWire"_lp,
     {
         { 0x00, 0x00, 0x04, 0x04, 0x04 },
         {
-            BOOL, FLOAT,
+            BOOL_info, FLOAT_info,
             serialized_vector.additional_info(),
             serialized_vector.additional_info(),
             saved_object.binary_array(0).additional_info() // Eww
@@ -365,7 +512,7 @@ Class wire_class { "SavedObjects.SavedWire"_lp,
     }
 };
 
-void BoardGenerator::generate(const std::string & filename)
+void BoardGenerator::generate(const std::string & filename, Board& board)
 {
     std::fstream file(filename, std::ios::binary | std::ios::out);
     if(!file.good())
@@ -378,25 +525,8 @@ void BoardGenerator::generate(const std::string & filename)
     SerializableVector3 pos{0.0, 0.0, 0.0};
     SerializableVector3 angles{0.0, 0.0, 0.0};
 
-    SerializableVector3 peg_pos{0.15, 0.075, 0.15};
-    SerializableVector3 peg_angles{0.0, 0.0, 0.0};
-    Peg peg{peg_pos, peg_angles};
+    board.add_board({0, 0}, {2, 3});
 
-    SerializableVector3 peg2_pos{2 * 0.30 + 0.15, 0.075, 1 * 0.30 + 0.15};
-    SerializableVector3 peg2_angles{0.0, 0.0, 0.0};
-    Peg peg2{peg2_pos, peg2_angles};
-
-    SerializableVector3 peg3_pos = peg_pos.middle(peg2_pos);
-    SerializableVector3 peg3_angles = peg_pos.look_at(peg2_pos);
-    //Peg peg3{peg3_pos, peg3_angles};
-
-    Wire wire{peg, peg2};
-
-    Board board{3, 4, color, pos, angles};
-    board.children.push_back(&peg);
-    board.children.push_back(&peg2);
-    //board.children.push_back(&peg3);
-    board.children.push_back(&wire);
     file << board;
     file << (uint8_t)0x0B;
 }
