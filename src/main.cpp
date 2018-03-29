@@ -127,7 +127,7 @@ void generate(const vu2& size, const routing_problem& problem,
             std::inserter(non_io_pegs, non_io_pegs.begin()));
 
     const auto& [width, height] = size;
-    Board board{(uint32_t)width, (uint32_t)height, {0., .5, 0.}, {0., 0., 0.}, {0., 0., 0.}};
+    Board board{(uint32_t)width, (uint32_t)height, {0., .5, 0.}, {0., -.0375, 0.}, {0., 0., 0.}};
     grid<Board*> board_at(width, height);
     grid<vi2> board_offset_at(width, height);
     board_at.fill(&board);

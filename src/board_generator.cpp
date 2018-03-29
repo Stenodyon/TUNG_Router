@@ -225,20 +225,50 @@ SerializableVector3 SerializableVector3::look_at(const SerializableVector3& othe
 {
     static const float rad2deg = 180. / M_PI;
     float _x = other.x - x;
-    //float _y = other.y - y;
+    float _y = other.y - y;
     float _z = other.z - z;
+    /*
+    if(_y < 0)
+    {
+        _x = -_x;
+        _y = -_y;
+        _z = -_z;
+    }
+    */
+
+#if 1
+    float new_x = -std::atan2(_y, std::sqrt(_x * _x + _z * _z));
+    //float new_y = std::atan2(std::cos(new_x), std::sin(new_x) * std::sin(new_z));
+    float new_y = std::atan2(_x, _z * std::cos(new_x));
+    float new_z = 0;
+
+    //float new_x = -std::atan2(_y, _z);
+    //float new_y = std::atan2(_x * std::cos(new_x), _z);
+    //float new_z = std::atan2(std::cos(new_x), std::sin(new_x) * std::sin(new_y));
+#endif
 
 #if 0
-    float new_x = std::atan2(_y, _z);
+    float new_x = -std::atan2(_y, _z);
     float new_y = std::atan2(_x * std::cos(new_x), _z);
-    float new_z = std::atan2(std::cos(new_x), std::sin(new_x) * std::sin(new_y));
+    if(_z < 0)
+    {
+        new_x = -new_x;
+        new_y = -new_y;
+    }
+    new_x = std::fmod(new_x + M_PI / 2, M_PI) - M_PI / 2;
+    float new_z = 0;
 #endif
+
+#if 0
     float new_x = 0;
     float new_y = std::atan2(_x, _z);
     float new_z = 0;
+#endif
     return SerializableVector3{
         new_x * rad2deg,
-        std::fmod(new_y * rad2deg + 180, 360.f) - 180,
+        //std::fmod(new_x * rad2deg + 90, 180.f) - 90,
+        //std::fmod(new_y * rad2deg + 180, 360.f) - 180,
+        new_y * rad2deg,
         new_z * rad2deg
     };
 }
@@ -273,7 +303,8 @@ Board::Board(uint32_t _x, uint32_t _z, SerializableColor _color,
     : x(_x), z(_z),
     color(_color), local_pos(_local_pos), local_angles(_local_angles),
     ClassObject<board_class>(
-            {&x, &z, &color, &local_pos, &local_angles, &children})
+            {&x, &z, &color, &local_pos, &local_angles, &children}),
+    parent(nullptr)
 {
 }
 
@@ -300,6 +331,7 @@ PegBase* Board::add_peg(const vi2& pos)
             SerializableVector3{ 0.15f + new_x * 0.30f, 0.075f, 0.15f + new_z * 0.30f },
             SerializableVector3{ 0.f, 0.f, 0.f }
         );
+        peg->parent = this;
         pegs_container.push_back(peg);
         pegs[pos] = peg.get();
     }
@@ -316,6 +348,7 @@ PegBase* Board::add_snapping_peg(const vi2& pos, uint8_t side)
             SerializableVector3{ 0.15f + new_x * 0.30f, 0.075f, 0.15f + new_z * 0.30f },
             side
         );
+        peg->parent = this;
         pegs_container.push_back(peg);
         pegs[pos] = peg.get();
     }
@@ -345,10 +378,11 @@ Board* Board::add_board(const vi2& pos, const vi2& size)
     auto board = std::make_shared<Board>(
             size.x, size.y,
             SerializableColor{ 0., 0., 0. },
-            SerializableVector3{ new_x * 0.30f, 1 * 0.075f, new_z * 0.30f },
+            SerializableVector3{ new_x * 0.30f, 2 * 0.075f, new_z * 0.30f },
             SerializableVector3{ 0.f, 0.f, 0.f }
             );
     boards.push_back(board);
+    board->parent = this;
     return board.get();
 }
 
@@ -358,13 +392,22 @@ Peg::Peg(SerializableVector3 _local_pos, SerializableVector3 _local_angles)
 {
 }
 
-const SerializableVector3 Peg::get_pos() const
+const SerializableVector3 PegBase::get_pos() const
 {
-    return local_pos;
+    auto pos = local_pos;
+    Board * current_parent = parent;
+    while(current_parent != nullptr)
+    {
+        auto parent_pos = current_parent->local_pos;
+        //parent_pos.y = parent_pos.y / 2;
+        pos = pos + parent_pos;
+        current_parent = current_parent->parent;
+    }
+    return pos;
 }
 
 float side_angle[4] = {
-    0.f, 180.f, 270.f, 90.f
+    180.f, 0.f, 270.f, 90.f
 };
 
 SnappingPeg::SnappingPeg(SerializableVector3 _local_pos, uint8_t side)
@@ -375,8 +418,8 @@ SnappingPeg::SnappingPeg(SerializableVector3 _local_pos, uint8_t side)
 }
 
 const SerializableVector3 directions[4] = {
-    { 0., 0., -.075 },
     { 0., 0., 0.075 },
+    { 0., 0., -.075 },
     { 0.075, 0., 0. },
     { -.075, 0., 0. },
 };
@@ -393,7 +436,7 @@ float PegBase::distance_to(const PegBase * other) const
 
 const SerializableVector3 SnappingPeg::get_pos() const
 {
-    return local_pos + directions[side];
+    return PegBase::get_pos() + directions[side];
 }
 
 const std::vector<const Object*> SnappingPeg::get_values() const
@@ -537,6 +580,49 @@ void BoardGenerator::generate(const std::string & filename, Board& board)
 
     //board.add_board({0, 0}, {2, 3});
 
+#if 0
+#define WAIT_A_MINUTE
+#endif
+#ifndef WAIT_A_MINUTE
     file << board;
+#else
+    Board test{5, 5, color, pos, angles};
+    PegBase * a = test.add_peg({0, 0});
+    Board * sub_board = test.add_board({2, 2}, {1, 1});
+    PegBase * b = sub_board->add_snapping_peg({0, 0}, 0);
+    //b->local_pos.y = b->local_pos.y + 0.5f;
+    PegBase * c = test.add_peg({1, 1});
+    c->local_pos = a->get_pos().middle(b->get_pos());
+    c->local_angles = a->get_pos().look_at(b->get_pos());
+    PegBase * d = test.add_peg({4, 0});
+    PegBase * e = test.add_peg({3, 0});
+    e->local_pos = d->get_pos().middle(b->get_pos());
+    e->local_angles = d->get_pos().look_at(b->get_pos());
+    PegBase * f = test.add_peg({0, 4});
+    PegBase * g = test.add_peg({0, 3});
+    g->local_pos = f->get_pos().middle(b->get_pos());
+    g->local_angles = f->get_pos().look_at(b->get_pos());
+    PegBase * h = test.add_peg({4, 4});
+    PegBase * i = test.add_peg({4, 3});
+    i->local_pos = h->get_pos().middle(b->get_pos());
+    i->local_angles = h->get_pos().look_at(b->get_pos());
+    PegBase * j = test.add_peg({0, 2});
+    PegBase * k = test.add_peg({0, 1});
+    k->local_pos = j->get_pos().middle(b->get_pos());
+    k->local_angles = j->get_pos().look_at(b->get_pos());
+    PegBase * l = test.add_peg({4, 2});
+    PegBase * m = test.add_peg({4, 1});
+    m->local_pos = l->get_pos().middle(b->get_pos());
+    m->local_angles = l->get_pos().look_at(b->get_pos());
+    PegBase * n = test.add_peg({2, 0});
+    PegBase * o = test.add_peg({2, 1});
+    o->local_pos = n->get_pos().middle(b->get_pos());
+    o->local_angles = n->get_pos().look_at(b->get_pos());
+    PegBase * p = test.add_peg({2, 4});
+    PegBase * q = test.add_peg({2, 3});
+    q->local_pos = p->get_pos().middle(b->get_pos());
+    q->local_angles = p->get_pos().look_at(b->get_pos());
+    file << test;
+#endif
     file << (uint8_t)0x0B;
 }

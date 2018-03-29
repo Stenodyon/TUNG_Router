@@ -254,17 +254,20 @@ struct SerializableColor : public ClassObject<serialized_color>
     const std::vector<const Object*> get_values() const override;
 };
 
+struct Board;
+
 struct PegBase
 {
     SerializableVector3 local_pos, local_angles;
     NullObject children;
+    Board * parent = nullptr;
 
     PegBase(const SerializableVector3& _local_pos,
             const SerializableVector3& _local_angles)
         : local_pos(_local_pos), local_angles(_local_angles)
     {}
 
-    virtual const SerializableVector3 get_pos() const = 0;
+    virtual const SerializableVector3 get_pos() const;
     float distance_to(const PegBase * other) const;
 };
 
@@ -272,7 +275,6 @@ struct Peg : public PegBase, public ClassObject<peg_class>
 {
     Peg(SerializableVector3 local_pos, SerializableVector3 local_angles);
 
-    const SerializableVector3 get_pos() const override;
     const std::vector<const Object*> get_values() const override;
 };
 
@@ -306,6 +308,7 @@ struct Board : public ClassObject<board_class>
     SerializableColor color;
     SerializableVector3 local_pos, local_angles;
     mutable ArrayObject<saved_object> children;
+    Board * parent = nullptr;
 
     std::vector<std::shared_ptr<PegBase>> pegs_container;
     std::unordered_map<vi2, PegBase*> pegs;
