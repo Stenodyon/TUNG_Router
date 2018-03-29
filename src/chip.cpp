@@ -64,6 +64,11 @@ vu2 chip_type::get_pin_by_label(const std::string & label) const
     return pin_labels.at(label);
 }
 
+bool chip_type::has_board(int side) const
+{
+    return pins[side].size() > 0;
+}
+
 chip::chip(vi2 pos, const chip_type & type)
     : pos(pos), type(type)
 {}
@@ -98,4 +103,38 @@ vi2 chip::get_pin_pos(uint_t side, uint_t pin_number) const
     ASSERT(pin_pos.x, 0, >=);
     ASSERT(pin_pos.y, 0, >=);
     return pin_pos;
+}
+
+
+bool chip::has_board(int side) const
+{
+    return type.has_board(side);
+}
+
+vi2 chip::get_io_board_pos(int side) const
+{
+    switch(side)
+    {
+        case NORTH:
+            return pos + vi2{0, -1};
+        case SOUTH:
+            return pos + vi2{0, type.height};
+        case EAST:
+            return pos + vi2{type.width, 0};
+        case WEST:
+            return pos + vi2{-1, 0};
+    }
+}
+
+vi2 chip::get_io_board_size(int side) const
+{
+    switch(side)
+    {
+        case NORTH:
+        case SOUTH:
+            return {type.width, 1};
+        case EAST:
+        case WEST:
+            return {1, type.height};
+    }
 }

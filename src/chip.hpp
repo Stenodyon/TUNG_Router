@@ -23,6 +23,7 @@ struct chip_type
     bool has_pin_label(const std::string & label) const;
     vu2 get_pin_by_label(const std::string & label) const;
     vi2 get_pin_offset(uint_t side, uint_t pin_number) const;
+    bool has_board(int side) const;
 };
 
 struct chip
@@ -32,4 +33,7 @@ struct chip
 
     chip(vi2 pos, const chip_type & type);
     vi2 get_pin_pos(uint_t side, uint_t pin_number) const;
+    bool has_board(int side) const;
+    vi2 get_io_board_pos(int side) const;
+    vi2 get_io_board_size(int side) const;
 };

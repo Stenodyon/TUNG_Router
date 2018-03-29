@@ -254,28 +254,38 @@ struct SerializableColor : public ClassObject<serialized_color>
     const std::vector<const Object*> get_values() const override;
 };
 
-struct Peg : public ClassObject<peg_class>
+struct PegBase
 {
     SerializableVector3 local_pos, local_angles;
     NullObject children;
 
-    Peg(SerializableVector3 local_pos, SerializableVector3 local_angles);
+    PegBase(const SerializableVector3& _local_pos,
+            const SerializableVector3& _local_angles)
+        : local_pos(_local_pos), local_angles(_local_angles)
+    {}
 
-    virtual const SerializableVector3 get_pos() const;
-    const std::vector<const Object*> get_values() const override;
-
-    float distance_to(const Peg& other) const;
+    virtual const SerializableVector3 get_pos() const = 0;
+    float distance_to(const PegBase * other) const;
 };
 
-struct SnappingPeg : public Peg
+struct Peg : public PegBase, public ClassObject<peg_class>
+{
+    Peg(SerializableVector3 local_pos, SerializableVector3 local_angles);
+
+    const SerializableVector3 get_pos() const override;
+    const std::vector<const Object*> get_values() const override;
+};
+
+struct SnappingPeg : public PegBase, public ClassObject<snapping_peg_class>
 {
     uint8_t side;
 
     SnappingPeg(SerializableVector3 local_pos, uint8_t side);
 
-    virtual const SerializableVector3 get_pos() const override;
+    const SerializableVector3 get_pos() const override;
+    const std::vector<const Object*> get_values() const override;
 
-    float distance_to(const Peg& other) const;
+    float distance_to(const PegBase * other) const;
 };
 
 struct Wire : public ClassObject<wire_class>
@@ -285,7 +295,7 @@ struct Wire : public ClassObject<wire_class>
     SerializableVector3 local_pos, local_angles;
     NullObject children;
 
-    Wire(Peg peg_a, Peg peg_b);
+    Wire(PegBase & peg_a, PegBase & peg_b);
 
     const std::vector<const Object*> get_values() const override;
 };
@@ -297,8 +307,8 @@ struct Board : public ClassObject<board_class>
     SerializableVector3 local_pos, local_angles;
     mutable ArrayObject<saved_object> children;
 
-    std::vector<std::shared_ptr<Peg>> pegs_container;
-    std::unordered_map<vi2, Peg*> pegs;
+    std::vector<std::shared_ptr<PegBase>> pegs_container;
+    std::unordered_map<vi2, PegBase*> pegs;
     std::vector<std::shared_ptr<Wire>> wires;
     std::vector<std::shared_ptr<Board>> boards;
 
@@ -307,11 +317,11 @@ struct Board : public ClassObject<board_class>
 
     const std::vector<const Object*> get_values() const override;
 
-    Peg* add_peg(const vi2& pos);
-    Peg* add_snapping_peg(const vi2& pos, uint8_t side);
+    PegBase* add_peg(const vi2& pos);
+    PegBase* add_snapping_peg(const vi2& pos, uint8_t side);
     void add_wire(const vi2& from, const vi2& to);
-    void add_wire(Peg* from, Peg* to);
-    Board* add_board(const vi2& pos, const vu2& size);
+    void add_wire(PegBase* from, PegBase* to);
+    Board* add_board(const vi2& pos, const vi2& size);
 };
 
 class BoardGenerator

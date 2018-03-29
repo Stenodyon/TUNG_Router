@@ -90,7 +90,7 @@ bool v2<int_t>::operator!=(const v2<int_t> & other) const
 template <typename int_t>
 bool v2<int_t>::operator<(const v2<int_t> & other) const
 {
-    return (y < other.y) || (x < other.x);
+    return (y < other.y) || ((y == other.y) && (x < other.x));
 }
 
 template <typename int_t>

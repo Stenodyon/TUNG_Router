@@ -97,6 +97,7 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
             const auto& [side, pin_number] = _chip.type.get_pin_by_label(pin_label);
             auto pin_pos = _chip.get_pin_pos(side, pin_number);
             this->nets[name].push_back(pin_pos);
+            io_pins.insert({side, pin_pos});
             return true;
         };
     parser.add_command("board", board_action);

@@ -281,7 +281,7 @@ const std::vector<const Object*> Board::get_values() const
 {
     children.clear();
     for(auto peg : pegs_container)
-        children.push_back(peg.get());
+        children.push_back(dynamic_cast<Object*>(peg.get()));
     for(auto wire : wires)
         children.push_back(wire.get());
     for(auto board : boards)
@@ -290,7 +290,7 @@ const std::vector<const Object*> Board::get_values() const
 }
 
 
-Peg* Board::add_peg(const vi2& pos)
+PegBase* Board::add_peg(const vi2& pos)
 {
     if(pegs.find(pos) == pegs.end())
     {
@@ -306,7 +306,7 @@ Peg* Board::add_peg(const vi2& pos)
     return pegs[pos];
 }
 
-Peg* Board::add_snapping_peg(const vi2& pos, uint8_t side)
+PegBase* Board::add_snapping_peg(const vi2& pos, uint8_t side)
 {
     if(pegs.find(pos) == pegs.end())
     {
@@ -332,20 +332,20 @@ void Board::add_wire(const vi2& from, const vi2& to)
     wires.push_back(wire);
 }
 
-void Board::add_wire(Peg* from, Peg* to)
+void Board::add_wire(PegBase* from, PegBase* to)
 {
     auto wire = std::make_shared<Wire>(*from, *to);
     wires.push_back(wire);
 }
 
-Board* Board::add_board(const vi2& pos, const vu2& size)
+Board* Board::add_board(const vi2& pos, const vi2& size)
 {
     auto new_x = x - 1 - pos.x - (size.x - 1);
     auto new_z = pos.y;
     auto board = std::make_shared<Board>(
             size.x, size.y,
             SerializableColor{ 0., 0., 0. },
-            SerializableVector3{ new_x * 0.30f, 5 * 0.075f, new_z * 0.30f },
+            SerializableVector3{ new_x * 0.30f, 1 * 0.075f, new_z * 0.30f },
             SerializableVector3{ 0.f, 0.f, 0.f }
             );
     boards.push_back(board);
@@ -353,7 +353,7 @@ Board* Board::add_board(const vi2& pos, const vu2& size)
 }
 
 Peg::Peg(SerializableVector3 _local_pos, SerializableVector3 _local_angles)
-    : local_pos(_local_pos), local_angles(_local_angles),
+    : PegBase(_local_pos, _local_angles),
     ClassObject<peg_class>({&local_pos, &local_angles, &children})
 {
 }
@@ -363,17 +363,22 @@ const SerializableVector3 Peg::get_pos() const
     return local_pos;
 }
 
+float side_angle[4] = {
+    0.f, 180.f, 270.f, 90.f
+};
+
 SnappingPeg::SnappingPeg(SerializableVector3 _local_pos, uint8_t side)
-    : Peg(_local_pos, {0., (float)std::fmod(side * 90.f, 360.) - 180, 0.}),
+    : PegBase(_local_pos, {0., side_angle[side], 0.}),
+    ClassObject<snapping_peg_class>({}),
     side(side)
 {
 }
 
 const SerializableVector3 directions[4] = {
-    { 0.075, 0., 0. },
     { 0., 0., -.075 },
+    { 0., 0., 0.075 },
+    { 0.075, 0., 0. },
     { -.075, 0., 0. },
-    { 0., 0., 0.075 }
 };
 
 const std::vector<const Object*> Peg::get_values() const
@@ -381,9 +386,9 @@ const std::vector<const Object*> Peg::get_values() const
     return {&local_pos, &local_angles, &children};
 }
 
-float Peg::distance_to(const Peg& other) const
+float PegBase::distance_to(const PegBase * other) const
 {
-    return local_pos.distance_to(other.local_pos);
+    return get_pos().distance_to(other->get_pos());
 }
 
 const SerializableVector3 SnappingPeg::get_pos() const
@@ -391,7 +396,12 @@ const SerializableVector3 SnappingPeg::get_pos() const
     return local_pos + directions[side];
 }
 
-Wire::Wire(Peg peg_a, Peg peg_b)
+const std::vector<const Object*> SnappingPeg::get_values() const
+{
+    return {&local_pos, &local_angles, &children};
+}
+
+Wire::Wire(PegBase& peg_a, PegBase& peg_b)
     //: input_input(true), length(peg_a.distance_to(peg_b)),
     : input_input(true),
     length(peg_a.get_pos().distance_to(peg_b.get_pos())),
@@ -525,7 +535,7 @@ void BoardGenerator::generate(const std::string & filename, Board& board)
     SerializableVector3 pos{0.0, 0.0, 0.0};
     SerializableVector3 angles{0.0, 0.0, 0.0};
 
-    board.add_board({0, 0}, {2, 3});
+    //board.add_board({0, 0}, {2, 3});
 
     file << board;
     file << (uint8_t)0x0B;
