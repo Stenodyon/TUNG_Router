@@ -12,11 +12,13 @@
 // TODO: replace bool return type by void and use exceptions instead
 
 namespace parser {
+
     template <typename T>
     T parse_value(const std::string& in);
 
     // Some template helpers
     namespace detail {
+
         template <int n, typename First, typename ... Rest>
         struct nth {
             typedef typename nth<n - 1, Rest...>::type type;
@@ -72,7 +74,8 @@ namespace parser {
         {
             return call_on_tuple_impl(func, tup, std::index_sequence_for<Types...>{});
         }
-    }
+
+    } // namespace detail
 
     class parse_error : public std::runtime_error
     {
@@ -154,4 +157,5 @@ namespace parser {
         }
         commands[name] = new Command<Types...>(name, action);
     }
-}
+
+} // namespace parser

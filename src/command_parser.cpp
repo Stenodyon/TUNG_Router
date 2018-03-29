@@ -33,7 +33,10 @@ namespace parser {
 
     CommandParser::~CommandParser()
     {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
         for(auto& [name, pointer] : commands)
+#pragma GCC diagnostic pop
             delete pointer;
     }
 

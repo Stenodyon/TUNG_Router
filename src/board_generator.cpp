@@ -225,7 +225,7 @@ SerializableVector3 SerializableVector3::look_at(const SerializableVector3& othe
 {
     static const float rad2deg = 180. / M_PI;
     float _x = other.x - x;
-    float _y = other.y - y;
+    //float _y = other.y - y;
     float _z = other.z - z;
 
 #if 0
@@ -364,7 +364,7 @@ const SerializableVector3 Peg::get_pos() const
 }
 
 SnappingPeg::SnappingPeg(SerializableVector3 _local_pos, uint8_t side)
-    : Peg(_local_pos, {0., std::fmod(side * 90.f, 360.) - 180, 0.}),
+    : Peg(_local_pos, {0., (float)std::fmod(side * 90.f, 360.) - 180, 0.}),
     side(side)
 {
 }

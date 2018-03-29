@@ -15,12 +15,11 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
     // TODO: Custom parser for the side (+create Side enum)
     std::optional<vi2> board_size;
     parser::CommandParser parser;
-    std::function<bool(void)> precondition =
+    std::function<void(void)> precondition =
         [&board_size]() {
             bool value = (bool)board_size;
             if(!value)
-                std::cerr << "Board size not set" << std::endl;
-            return value;
+                throw std::invalid_argument("Board size not set (board width height)");
         };
     std::function<bool(int,int)> board_action =
         [&board_size, this]
@@ -34,9 +33,8 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
         [&precondition, this]
         (std::string name, int width, int height)
         {
-            if(!precondition())
-                return false;
-            this->types.insert({name, {width, height}});
+            precondition();
+            this->types.insert({name, {(uint_t)width, (uint_t)height}});
             return true;
         };
     std::function<bool(std::string, std::string, int, std::string)>
@@ -44,18 +42,19 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
         [&precondition, this](std::string type_name, std::string _side,
                 int offset, std::string label)
         {
-            if(!precondition())
-                return false;
+            precondition();
             int_t side = get_side(_side);
             if(side == -1)
             {
-                std::cerr << "Unknown side " << _side << std::endl;
-                return false;
+                std::ostringstream sstream;
+                sstream << "Unknown side: '" << _side << "'";
+                throw std::invalid_argument(sstream.str());
             }
             if(this->types.find(type_name) == this->types.end())
             {
-                std::cerr << "Undefined type " << type_name << std::endl;
-                return false;
+                std::ostringstream sstream;
+                sstream << "Undefined type: '" << type_name << "'";
+                throw std::invalid_argument(sstream.str());
             }
             chip_type & type = this->types.at(type_name);
             type.add_pin(side, offset, label);
@@ -65,10 +64,12 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
         [&precondition, this]
         (std::string type_name, int x_pos, int y_pos, std::string name)
         {
+            precondition();
             if(this->types.find(type_name) == this->types.end())
             {
-                std::cerr << "Undefined type " << type_name << std::endl;
-                return false;
+                std::ostringstream sstream;
+                sstream << "Undefined type: '" << type_name << "'";
+                throw std::invalid_argument(sstream.str());
             }
             chip_type & type = this->types.at(type_name);
             this->chips.insert({name, {{x_pos, y_pos}, type}});
@@ -78,17 +79,20 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
         [&precondition, this]
         (std::string name, std::string chip_name, std::string pin_label)
         {
+            precondition();
             if(this->chips.find(chip_name) == this->chips.end())
             {
-                std::cerr << "Undefined chip " << chip_name << std::endl;
-                return false;
+                std::ostringstream sstream;
+                sstream << "Undefined chip: '" << chip_name << "'";
+                throw std::invalid_argument(sstream.str());
             }
             chip & _chip = chips.at(chip_name);
             if(!_chip.type.has_pin_label(pin_label))
             {
-                std::cerr << "Chip " << chip_name << " has no pin labelled "
-                    << pin_label << std::endl;
-                return false;
+                std::ostringstream sstream;
+                sstream << "Chip '" << chip_name << "' has no pin labelled '"
+                    << pin_label << "'";
+                throw std::invalid_argument(sstream.str());
             }
             const auto& [side, pin_number] = _chip.type.get_pin_by_label(pin_label);
             auto pin_pos = _chip.get_pin_pos(side, pin_number);

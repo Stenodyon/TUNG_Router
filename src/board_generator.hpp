@@ -123,7 +123,7 @@ struct Class
 struct Object
 {
     virtual stream& serialize(stream& out) const = 0;
-    virtual void set_id(uint32_t id) const {}
+    virtual void set_id(uint32_t /*id*/) const {}
 };
 
 struct NullObject : public Object

@@ -118,7 +118,7 @@ void generate(const vu2& size, const std::vector<std::vector<vi2>>& paths)
     }
 
     const auto& [width, height] = size;
-    Board board{width, height, {0., .5, 0.}, {0., 0., 0.}, {0., 0., 0.}};
+    Board board{(uint32_t)width, (uint32_t)height, {0., .5, 0.}, {0., 0., 0.}, {0., 0., 0.}};
 
     std::unordered_map<vi2, Peg*> phys_pegs;
     for(auto peg : pegs)
