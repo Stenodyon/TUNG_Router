@@ -6,6 +6,8 @@
 
 #include "command_parser.hpp"
 
+using namespace parser;
+
 TEST_CASE("Command Parser")
 {
     CommandParser parser;

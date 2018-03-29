@@ -14,7 +14,7 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
     // TODO: Move all those actions as class methods of routing_problem
     // TODO: Custom parser for the side (+create Side enum)
     std::optional<vi2> board_size;
-    CommandParser parser;
+    parser::CommandParser parser;
     std::function<bool(void)> precondition =
         [&board_size]() {
             bool value = (bool)board_size;
@@ -104,7 +104,7 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
     std::string contents = read_file(filename);
     try {
         parser.parse(contents);
-    } catch(parse_error& error) {
+    } catch(parser::parse_error& error) {
         std::cerr << error.what();
         exit(-1);
     }
