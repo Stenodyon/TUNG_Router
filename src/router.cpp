@@ -105,16 +105,24 @@ router::router(routing_problem & problem, bool find_best)
 {
 }
 
+#define RANDOM_WALK
 std::vector<std::vector<vi2>> router::route()
 {
     std::srand(std::time(0));
+#ifdef RANDOM_WALK
+#define _connections connections
+#else
+    std::vector<connection> _connections;
+    _connections.reserve(connections.size());
+#endif
     do
     {
+#ifdef RANDOM_WALK
         int_t swap_a = std::rand() % connections.size();
         int_t swap_b = std::rand() % connections.size();
         std::iter_swap(connections.begin() + swap_a,
                 connections.begin() + swap_b);
-#if 0
+#else
         uint_t pos = 0;
         for(auto index : permutation.values_)
         {
@@ -122,7 +130,7 @@ std::vector<std::vector<vi2>> router::route()
             pos++;
         }
 #endif
-        auto paths = attempt_route(connections, map);
+        auto paths = attempt_route(_connections, map);
         if(paths.size() >= connections.size())
         {
             if(!find_best)
@@ -135,14 +143,16 @@ std::vector<std::vector<vi2>> router::route()
             {
                 if(!propose_candidate(paths))
                 {
+#ifdef RANDOM_WALK
                     std::iter_swap(connections.begin() + swap_a,
                             connections.begin() + swap_b);
+#endif
                 }
             }
         }
         ++permutation;
-        prog_bar.increment();
 #if 0
+        prog_bar.increment();
         //if(prog_bar.value % (prog_bar.max / 100) == 0)
         if(prog_bar.value % 100000)
         {

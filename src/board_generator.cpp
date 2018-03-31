@@ -227,47 +227,13 @@ SerializableVector3 SerializableVector3::look_at(const SerializableVector3& othe
     float _x = other.x - x;
     float _y = other.y - y;
     float _z = other.z - z;
-    /*
-    if(_y < 0)
-    {
-        _x = -_x;
-        _y = -_y;
-        _z = -_z;
-    }
-    */
 
-#if 1
     float new_x = -std::atan2(_y, std::sqrt(_x * _x + _z * _z));
-    //float new_y = std::atan2(std::cos(new_x), std::sin(new_x) * std::sin(new_z));
     float new_y = std::atan2(_x, _z * std::cos(new_x));
     float new_z = 0;
 
-    //float new_x = -std::atan2(_y, _z);
-    //float new_y = std::atan2(_x * std::cos(new_x), _z);
-    //float new_z = std::atan2(std::cos(new_x), std::sin(new_x) * std::sin(new_y));
-#endif
-
-#if 0
-    float new_x = -std::atan2(_y, _z);
-    float new_y = std::atan2(_x * std::cos(new_x), _z);
-    if(_z < 0)
-    {
-        new_x = -new_x;
-        new_y = -new_y;
-    }
-    new_x = std::fmod(new_x + M_PI / 2, M_PI) - M_PI / 2;
-    float new_z = 0;
-#endif
-
-#if 0
-    float new_x = 0;
-    float new_y = std::atan2(_x, _z);
-    float new_z = 0;
-#endif
     return SerializableVector3{
         new_x * rad2deg,
-        //std::fmod(new_x * rad2deg + 90, 180.f) - 90,
-        //std::fmod(new_y * rad2deg + 180, 360.f) - 180,
         new_y * rad2deg,
         new_z * rad2deg
     };

@@ -118,12 +118,15 @@ vi2 chip::get_io_board_pos(int side) const
         case NORTH:
             return pos + vi2{0, -1};
         case SOUTH:
-            return pos + vi2{0, type.height};
+            return pos + vi2{0, (signed)type.height};
         case EAST:
-            return pos + vi2{type.width, 0};
+            return pos + vi2{(signed)type.width, 0};
         case WEST:
             return pos + vi2{-1, 0};
+        default:
+            assert(false);
     }
+    return {-1, -1};
 }
 
 vi2 chip::get_io_board_size(int side) const
@@ -132,9 +135,12 @@ vi2 chip::get_io_board_size(int side) const
     {
         case NORTH:
         case SOUTH:
-            return {type.width, 1};
+            return {(signed)type.width, 1};
         case EAST:
         case WEST:
-            return {1, type.height};
+            return {1, (signed)type.height};
+        default:
+            assert(false);
     }
+    return {-1, -1};
 }

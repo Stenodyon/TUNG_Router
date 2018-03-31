@@ -172,8 +172,10 @@ struct ClassObject : public Object
         if(first_id == 0)
         {
             first_id = id;
+#ifdef _DEBUG
             std::cout << "ClassObject<" << _class.name.value << ">::first_id = "
                 << first_id << std::endl;
+#endif
         }
     }
 

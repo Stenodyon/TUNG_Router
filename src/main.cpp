@@ -17,7 +17,7 @@ grid<char> render(const grid<int> & map);
 void print(const grid<char> & grid_render);
 void place_pegs(grid<int> & map, const std::vector<vi2> & path);
 char merge_tiles(const char & prev, const char new_char);
-void generate(const vu2& size, const routing_problem& problem, const std::vector<std::vector<vi2>>& paths);
+Board generate(const vu2& size, const routing_problem& problem, const std::vector<std::vector<vi2>>& paths);
 
 #ifdef _TESTING
 #define CATCH_CONFIG_MAIN
@@ -33,6 +33,7 @@ int main(int argc, char * argv[])
     CLParser cl_args(argc, argv);
     bool best = cl_args.has_option("-b");
     std::string filename = cl_args.get_last();
+    std::string output_filename = remove_extension(filename) + ".tungboard";
 
     routing_problem problem(filename);
     const auto& [width, height] = problem.map.get_size();
@@ -48,7 +49,10 @@ int main(int argc, char * argv[])
     };
     auto paths = _router.route();
 
-    generate({width, height}, problem, paths);
+    Board board = generate({width, height}, problem, paths);
+    BoardGenerator generator;
+    generator.generate(output_filename, board);
+    std::cout << "Generated " << output_filename << std::endl;
 
     graphics.loop();
     return 0;
@@ -104,7 +108,7 @@ char merge_tiles(const char & prev, const char new_char)
     else return '*';
 }
 
-void generate(const vu2& size, const routing_problem& problem,
+Board generate(const vu2& size, const routing_problem& problem,
         const std::vector<std::vector<vi2>>& paths)
 {
     std::set<vi2> pegs;
@@ -112,7 +116,10 @@ void generate(const vu2& size, const routing_problem& problem,
     std::set<vi2> io_pegs;
     std::vector<std::pair<vi2, vi2>> connections;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
     for(const auto& [side, peg] : problem.io_pins)
+#pragma GCC diagnostic pop
         io_pegs.insert(peg);
     for(const auto& path : paths)
     {
@@ -133,7 +140,10 @@ void generate(const vu2& size, const routing_problem& problem,
     board_at.fill(&board);
     board_offset_at.fill({0, 0});
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
     for(const auto& [name, chip] : problem.chips)
+#pragma GCC diagnostic pop
     {
         for(int side : {0, 1, 2, 3})
         {
@@ -164,7 +174,5 @@ void generate(const vu2& size, const routing_problem& problem,
     }
     for(const auto& [from, to] : connections)
         board.add_wire(phys_pegs[from], phys_pegs[to]);
-
-    BoardGenerator generator;
-    generator.generate("test_board.tungboard", board);
+    return board;
 }
