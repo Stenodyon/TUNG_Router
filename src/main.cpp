@@ -3,6 +3,11 @@
 #include <string>
 #include <unordered_map>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#include <wx/wx.h>
+#pragma GCC diagnostic pop
+
 #include "router.hpp"
 #include "types.hpp"
 #include "chip.hpp"
@@ -12,6 +17,7 @@
 #include "stringutils.h"
 #include "routing_problem.hpp"
 #include "board_generator.hpp"
+#include "gui/gui.hpp"
 
 grid<char> render(const grid<int> & map);
 void print(const grid<char> & grid_render);
@@ -19,10 +25,13 @@ void place_pegs(grid<int> & map, const std::vector<vi2> & path);
 char merge_tiles(const char & prev, const char new_char);
 Board generate(const vu2& size, const routing_problem& problem, const std::vector<std::vector<vi2>>& paths);
 
+wxIMPLEMENT_APP(RouterApp);
+
 #ifdef _TESTING
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 #else
+#if 0
 int main(int argc, char * argv[])
 {
     if(argc != 2 && argc != 3)
@@ -57,6 +66,7 @@ int main(int argc, char * argv[])
     graphics.loop();
     return 0;
 }
+#endif
 #endif
 
 grid<char> render(const grid<int> & map)

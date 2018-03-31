@@ -5,8 +5,11 @@ BUILD_DIR=build/
 TESTS_DIR=tests/
 
 FLAGS=-std=c++17 -Wall -Wextra -Wpedantic -Wno-sign-compare -Wno-reorder \
-      -fms-extensions -flto -I./lib/include
-LIBS=-L./lib/lib/x64/ -lSDL2
+      -fms-extensions -flto -I./lib/SDL2/include/ -I./lib/catch_include/ \
+      -I./lib/wx/include/ -I./lib/wx/lib/mswu \
+      -D __WXMSW__ -D _UNICODE -D NDEBUG
+LIBS=-L./lib/SDL2/lib/x64/ -L./lib/wx/lib/ -lSDL2 \
+     -lwxmsw30u_core -lwxbase30u
 
 # -----------------------------------------------------
 
