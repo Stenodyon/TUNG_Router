@@ -83,9 +83,35 @@ void ChipLibrary::OnFolderPopupClick(wxCommandEvent & event)
     }
 }
 
+wxTreeItemId ChipLibrary::FindFolder(const std::string & name)
+{
+    wxTreeItemIdValue cookie;
+    auto item = GetFirstChild(GetRootItem(), cookie);
+    const int count = GetChildrenCount(GetRootItem());
+
+    for(int index = 0; index < count; index++)
+    {
+        if(GetItemText(item) == name)
+            return item;
+        item = GetNextChild(item, cookie);
+    }
+    return item;
+}
+
 wxTreeItemId ChipLibrary::AddFolder(const std::string & name)
 {
     return AppendItem(root_id, name, 0, -1, new detail::FolderItem(name));
+}
+
+wxTreeItemId ChipLibrary::AddChip(const std::string & folder_name,
+        const std::string & chip_name,
+        const chip_type & chip)
+{
+    wxTreeItemId folder = FindFolder(folder_name);
+    if(!folder.IsOk())
+        folder = AddFolder(folder_name);
+    return AppendItem(folder, chip_name, 1, -1, new detail::ChipItem(
+                new chip_type(chip)));
 }
 
 wxTreeItemId ChipLibrary::NewFolder()

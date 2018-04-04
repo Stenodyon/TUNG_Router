@@ -76,6 +76,7 @@ class NewChipDialog : public wxDialog
         NewChipDialog(wxWindow * parent, wxWindowID id, std::vector<wxString> folders);
 
         chip_type get_created_chip();
+        wxString get_chip_name();
         wxString get_chip_folder();
 
     private:

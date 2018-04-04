@@ -5,9 +5,18 @@
 
 #include "assert.hpp"
 
+chip_type::chip_type(const chip_type & to_copy)
+    : width(to_copy.width), height(to_copy.height)
+{
+    for(int side = 0; side < 4; side++)
+        pins[side] = to_copy.pins[side];
+    pin_labels = to_copy.pin_labels;
+}
+
 chip_type::chip_type(uint_t width, uint_t height)
     : width(width), height(height)
-{}
+{
+}
 
 void chip_type::add_pin(uint_t side, uint_t pos, std::string label)
 {
@@ -71,7 +80,8 @@ bool chip_type::has_board(int side) const
 
 chip::chip(vi2 pos, const chip_type & type)
     : pos(pos), type(type)
-{}
+{
+}
 
 vi2 chip::get_pin_pos(uint_t side, uint_t pin_number) const
 {

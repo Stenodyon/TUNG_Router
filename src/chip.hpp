@@ -17,6 +17,7 @@ struct chip_type
     std::vector<uint_t> pins[4];
     std::unordered_map<std::string, vu2> pin_labels;
 
+    chip_type(const chip_type & to_copy);
     chip_type(uint_t width, uint_t height);
 
     void add_pin(uint_t side, uint_t pos, std::string label);

@@ -64,11 +64,14 @@ void MainFrame::OpenNewChipDialog()
 
     int return_value = dialog->ShowModal();
     if(return_value == RETURN_OK)
+    {
         std::cout << "Create!" << std::endl;
-    else if(return_value == RETURN_CANCEL)
-        std::cout << "Canel!" << std::endl;
-    else
-        std::cout << "wat" << std::endl;
+        chip_type type = dialog->get_created_chip();
+        std::string chip_name = dialog->get_chip_name().ToStdString();
+        std::string folder = dialog->get_chip_folder().ToStdString();
+
+        chip_library->AddChip(folder, chip_name, type);
+    }
 }
 
 wxMenu * MainFrame::make_file_menu()

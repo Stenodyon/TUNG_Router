@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <memory>
 
 #include <wx/wx.h>
 #include <wx/treectrl.h>
@@ -22,7 +23,7 @@ namespace detail
 
     struct ChipItem : public wxTreeItemData
     {
-        chip_type * type;
+        std::shared_ptr<chip_type> type;
 
         ChipItem(chip_type * type) : type(type) {}
     };
@@ -40,12 +41,15 @@ class ChipLibrary : public wxTreeCtrl
         void OnRightClick(wxContextMenuEvent & event);
         void OnItemRightClick(wxTreeEvent & event);
         void OnFolderPopupClick(wxCommandEvent & event);
+        wxTreeItemId FindFolder(const std::string & name);
 
     public:
         ChipLibrary(wxWindow * parent);
 
         wxTreeItemId AddFolder(const std::string & name);
-        wxTreeItemId AddChip(const std::string & folder_name, chip_type * chip);
+        wxTreeItemId AddChip(const std::string & folder_name,
+                const std::string & chip_name,
+                const chip_type & chip);
         wxTreeItemId NewFolder();
 
         std::vector<wxString> GetFolders() const;

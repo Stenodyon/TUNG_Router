@@ -63,6 +63,11 @@ wxString NewChipDialog::get_chip_folder()
     return chip_folder;
 }
 
+wxString NewChipDialog::get_chip_name()
+{
+    return chip_name;
+}
+
 int NewChipDialog::get_chip_width()
 {
     return std::stoi(width_field->GetLineText(0).ToStdString());
@@ -145,7 +150,10 @@ wxWindow * NewChipDialog::make_name_panel(wxWindow * parent,
 
     name_field->Bind(wxEVT_TEXT,
             [name_field, this](wxCommandEvent&)
-            { chip_display->SetName(name_field->GetLineText(0)); },
+            {
+                chip_name = name_field->GetLineText(0);
+                chip_display->SetName(chip_name);
+            },
             ID_NAME_FIELD);
     width_field->Bind(wxEVT_TEXT,
             [this](wxCommandEvent&)
@@ -268,9 +276,9 @@ namespace detail
         }
 
         if(new_size > size)
-            AppendRows(new_size - size);
+            AppendRows(delta);
         else if(size > new_size)
-            DeleteRows(size - new_size);
+            DeleteRows(new_size, delta);
     }
 }
 
