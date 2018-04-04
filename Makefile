@@ -4,12 +4,12 @@ SRC_DIR=src/
 BUILD_DIR=build/
 TESTS_DIR=tests/
 
-FLAGS=-std=c++17 -Wall -Wextra -Wpedantic -Wno-sign-compare -Wno-reorder \
+FLAGS=-std=c++17 -Wall -Wextra -Wno-sign-compare -Wno-reorder \
       -fms-extensions -flto -I./lib/SDL2/include/ -I./lib/catch_include/ \
       -I./lib/wx/include/ -I./lib/wx/lib/mswu \
       -D __WXMSW__ -D _UNICODE -D NDEBUG
 LIBS=-L./lib/SDL2/lib/x64/ -L./lib/wx/lib/ -lSDL2 \
-     -lwxmsw30u_core -lwxbase30u
+     -lwxmsw30u_core -lwxbase30u -lwxmsw30u_adv
 
 # -----------------------------------------------------
 
@@ -17,8 +17,10 @@ BIN=$(NAME).exe
 BIN_DEBUG=$(NAME).debug.exe
 BIN_TEST=$(NAME).test.exe
 
+RES=$(shell find $(SRC_DIR) -type f -name '*.rc')
+RES_OBJ=$(RES:$(SRC_DIR)%.rc=$(BUILD_DIR)%.o)
 SRC=$(shell find $(SRC_DIR) -type f -name '*.cpp')
-OBJ=$(SRC:$(SRC_DIR)%.cpp=$(BUILD_DIR)%.o)
+OBJ=$(SRC:$(SRC_DIR)%.cpp=$(BUILD_DIR)%.o) $(RES_OBJ)
 
 TEST_SRC=$(shell find $(TESTS_DIR) -type f -name '*.cpp')
 TEST_OBJ=$(TEST_SRC:$(TESTS_DIR)%.cpp=$(BUILD_DIR)%.o)
@@ -57,3 +59,7 @@ $(BUILD_DIR)%.o: $(SRC_DIR)%.cpp
 $(BUILD_DIR)%.o: $(TESTS_DIR)%.cpp
 	@mkdir -p $(dir $@)
 	g++ -c $< $(FLAGS) -I./src -o $@
+
+$(BUILD_DIR)%.o: $(SRC_DIR)%.rc
+	@mkdir -p $(dir $@)
+	windres --use-temp-file -I./lib/wx/include $< $@
