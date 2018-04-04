@@ -6,7 +6,8 @@
 
 #include "../fileutils.h"
 #include "placer_control.hpp"
-#include "new_chip_dialog.hpp"
+#include "chip_editor.hpp"
+#include "../command_parser.hpp"
 
 MainFrame::MainFrame()
     : wxFrame(NULL, wxID_ANY, "TUNG Router")
@@ -14,9 +15,12 @@ MainFrame::MainFrame()
     Maximize(true);
     SetBackgroundStyle(wxBG_STYLE_SYSTEM);
 
+    auto library_menu = make_library_menu();
+
     wxMenuBar * menu_bar = new wxMenuBar;
     menu_bar->Append(make_file_menu(), "&File");
     menu_bar->Append(make_new_menu(), "&New");
+    menu_bar->Append(library_menu, "&Library");
     SetMenuBar(menu_bar);
     CreateStatusBar();
 
@@ -38,6 +42,12 @@ MainFrame::MainFrame()
     SetMinSize({800, 600});
 
     Bind(wxEVT_MENU, &MainFrame::OnExit, this, wxID_EXIT);
+    library_menu->Bind(wxEVT_MENU,
+            &MainFrame::OnLibraryExport, this,
+            ID_LIBRARY_EXPORT);
+    library_menu->Bind(wxEVT_MENU,
+            &MainFrame::OnLibraryImport, this,
+            ID_LIBRARY_IMPORT);
 }
 
 void MainFrame::OnExit(wxCommandEvent&)
@@ -48,8 +58,8 @@ void MainFrame::OnExit(wxCommandEvent&)
 void MainFrame::OnOpen(wxCommandEvent&)
 {
     wxFileDialog file_dialog(this, _("Open project file"), "", "",
-            "Routing files (*.rf/*.trp)|*.rf;*.trp"
-            , wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+            "Routing files (*.rf/*.trp)|*.rf;*.trp",
+            wxFD_OPEN | wxFD_FILE_MUST_EXIST);
     if(file_dialog.ShowModal() == wxID_CANCEL)
         return;
     std::string filename = file_dialog.GetPath().ToStdString();
@@ -57,20 +67,43 @@ void MainFrame::OnOpen(wxCommandEvent&)
     std::cout << read_file(filename) << std::endl;
 }
 
-void MainFrame::OpenNewChipDialog()
+void MainFrame::OnLibraryImport(wxCommandEvent&)
 {
-    NewChipDialog * dialog = new NewChipDialog(this, wxID_ANY,
-            chip_library->GetFolders());
+    wxFileDialog file_dialog(this, _("Open library file"), "", "",
+            "Library Files (*.trl)|*.trl",
+            wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    if(file_dialog.ShowModal() == wxID_CANCEL)
+        return;
+    chip_library->LoadFromFile(file_dialog.GetPath().ToStdString());
+}
+
+void MainFrame::OnLibraryExport(wxCommandEvent&)
+{
+    wxFileDialog file_dialog(this, _("Save library"), "", "",
+            "Library Files (*.trl)|*.trl",
+            wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+    if(file_dialog.ShowModal() == wxID_CANCEL)
+        return;
+    chip_library->SaveToFile(file_dialog.GetPath().ToStdString());
+}
+
+void MainFrame::OpenChipEditor(const std::string & folder,
+        const std::string & chip_name,
+        chip_type * to_edit)
+{
+    ChipEditor * dialog = new ChipEditor(this, wxID_ANY,
+            chip_library->GetFolders(),
+            chip_name, folder,
+            to_edit);
 
     int return_value = dialog->ShowModal();
     if(return_value == RETURN_OK)
     {
-        std::cout << "Create!" << std::endl;
         chip_type type = dialog->get_created_chip();
         std::string chip_name = dialog->get_chip_name().ToStdString();
         std::string folder = dialog->get_chip_folder().ToStdString();
 
-        chip_library->AddChip(folder, chip_name, type);
+        chip_library->SetChip(folder, chip_name, type);
     }
 }
 
@@ -98,9 +131,19 @@ wxMenu * MainFrame::make_new_menu()
     menu_new->Append(ID_NEW_BOARD, "&Board");
     menu_new->Append(ID_NEW_CHIP, "&Chip");
 
-    Bind(wxEVT_MENU, [this](wxCommandEvent&) { OpenNewChipDialog(); }, ID_NEW_CHIP);
+    Bind(wxEVT_MENU, [this](wxCommandEvent&) { OpenChipEditor(); }, ID_NEW_CHIP);
 
     return menu_new;
+}
+
+wxMenu * MainFrame::make_library_menu()
+{
+    auto * menu = new wxMenu;
+
+    menu->Append(ID_LIBRARY_IMPORT, "&Import");
+    menu->Append(ID_LIBRARY_EXPORT, "&Export");
+
+    return menu;
 }
 
 wxWindow * MainFrame::make_library_window(wxWindow * parent)
@@ -120,6 +163,19 @@ wxWindow * MainFrame::make_library_window(wxWindow * parent)
 
     library_panel->SetSizerAndFit(lib_sizer);
 
+    chip_library->Bind(wxEVT_TREE_ITEM_ACTIVATED, [this](wxTreeEvent& event)
+            {
+                auto item = event.GetItem();
+                auto folder = chip_library->GetFolder(item);
+                if(folder)
+                {
+                    auto folder_name = folder.value().ToStdString();
+                    auto chip_name = chip_library->GetItemText(item).ToStdString();
+                    auto chip = chip_library->GetChip(item);
+                    OpenChipEditor(folder_name, chip_name, chip);
+                }
+            });
+
     return library_panel;
 }
 
@@ -131,6 +187,26 @@ wxSize MainFrame::DoGetBestClientSize() const
 RouterApp::~RouterApp()
 {
     //delete frame;
+}
+
+void RouterApp::HandleEvent(wxEvtHandler * handler,
+        wxEventFunction func,
+        wxEvent & event) const
+{
+    try
+    {
+        wxApp::HandleEvent(handler, func, event);
+    } catch(std::invalid_argument & error)
+    {
+        wxMessageBox(wxString{} << error.what(),
+                wxMessageBoxCaptionStr,
+                wxOK | wxCENTER | wxICON_ERROR);
+    } catch(parser::parse_error & error)
+    {
+        wxMessageBox(wxString{} << error.what(),
+                wxMessageBoxCaptionStr,
+                wxOK | wxCENTER | wxICON_ERROR);
+    }
 }
 
 bool RouterApp::OnInit()

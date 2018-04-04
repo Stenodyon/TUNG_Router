@@ -1,10 +1,14 @@
-#include "new_chip_dialog.hpp"
+#include "chip_editor.hpp"
 
 #include <wx/notebook.h>
 #include <cstdlib>
 #include <string>
 
-NewChipDialog::NewChipDialog(wxWindow * parent, wxWindowID id, std::vector<wxString> folders)
+ChipEditor::ChipEditor(wxWindow * parent, wxWindowID id,
+        std::vector<wxString> folders,
+        const std::string & name,
+        const std::string & folder,
+        chip_type * to_edit)
     : wxDialog(parent, id, "New Chip",
             wxDefaultPosition, wxDefaultSize,
             wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER),
@@ -12,18 +16,31 @@ NewChipDialog::NewChipDialog(wxWindow * parent, wxWindowID id, std::vector<wxStr
     chip_name("new_chip"),
     chip_folder("misc")
 {
+    const std::unordered_map<std::string, vu2> * pins = nullptr;
+    if(to_edit != nullptr) {
+        chip_width = to_edit->width;
+        chip_height = to_edit->height;
+        pins = &(to_edit->pin_labels);
+    }
+    else {
+        chip_width = 3;
+        chip_height = 8;
+    }
+    chip_name = name;
+    chip_folder = folder;
+
     auto * sizer = new wxBoxSizer(wxHORIZONTAL);
 
     chip_display = new ChipDisplay(this, wxID_ANY);
-    chip_display->SetName("new_chip");
+    chip_display->SetName(chip_name);
 
-    sizer->Add(make_input_panel(this, folders), 1, wxEXPAND);
+    sizer->Add(make_input_panel(this, folders, pins), 1, wxEXPAND);
     sizer->Add(chip_display, 1, wxEXPAND);
 
     SetSizerAndFit(sizer);
 }
 
-chip_type NewChipDialog::get_created_chip()
+chip_type ChipEditor::get_created_chip()
 {
     int width = chip_display->GetWidth();
     int height = chip_display->GetHeight();
@@ -58,34 +75,35 @@ chip_type NewChipDialog::get_created_chip()
     return type;
 }
 
-wxString NewChipDialog::get_chip_folder()
+wxString ChipEditor::get_chip_folder()
 {
     return chip_folder;
 }
 
-wxString NewChipDialog::get_chip_name()
+wxString ChipEditor::get_chip_name()
 {
     return chip_name;
 }
 
-int NewChipDialog::get_chip_width()
+int ChipEditor::get_chip_width()
 {
     return std::stoi(width_field->GetLineText(0).ToStdString());
 }
 
-int NewChipDialog::get_chip_height()
+int ChipEditor::get_chip_height()
 {
     return std::stoi(height_field->GetLineText(0).ToStdString());
 }
 
-wxWindow * NewChipDialog::make_input_panel(wxWindow * parent,
-        std::vector<wxString> & folders)
+wxWindow * ChipEditor::make_input_panel(wxWindow * parent,
+        std::vector<wxString> & folders,
+        const std::unordered_map<std::string, vu2> * pin_labels)
 {
     auto * panel = new wxPanel(parent);
     wxBoxSizer * sizer = new wxBoxSizer(wxVERTICAL);
 
     auto name_panel = make_name_panel(panel, folders);
-    auto pin_panel = make_pin_window(panel);
+    auto pin_panel = make_pin_window(panel, pin_labels);
     auto buttons_panel = make_buttons(panel);
 
     sizer->Add(name_panel, 0, wxTOP | wxLEFT | wxRIGHT, 10);
@@ -96,30 +114,27 @@ wxWindow * NewChipDialog::make_input_panel(wxWindow * parent,
     return panel;
 }
 
-wxWindow * NewChipDialog::make_name_panel(wxWindow * parent,
+wxWindow * ChipEditor::make_name_panel(wxWindow * parent,
         std::vector<wxString> & folders)
 {
     auto * panel = new wxPanel(parent);
     auto * box = new wxStaticBoxSizer(wxVERTICAL, panel, "Board Properties");
     auto * sizer = new wxFlexGridSizer(3, 4, 2, 10);
 
-    auto * name_field = new wxTextCtrl(panel, ID_NAME_FIELD, "new_chip",
+    auto * name_field = new wxTextCtrl(panel, ID_NAME_FIELD, chip_name,
             wxDefaultPosition, wxDefaultSize,
             0,
             detail::ChipNameValidator(&chip_name));
     auto * folder_chooser = new wxComboBox(panel, ID_FOLDER_FIELD);
     for(const auto& folder : folders)
         folder_chooser->Append(folder);
-    if(folders.size() == 0)
-        folder_chooser->ChangeValue("misc");
-    else
-        folder_chooser->SetSelection(0);
+    folder_chooser->ChangeValue(chip_folder);
 
-    width_field = new wxTextCtrl(panel, ID_WIDTH_FIELD, "3",
+    width_field = new wxTextCtrl(panel, ID_WIDTH_FIELD, wxString{} << chip_width,
             wxDefaultPosition, wxDefaultSize,
             wxTE_RIGHT,
             wxIntegerValidator<int>());
-    height_field = new wxTextCtrl(panel, ID_HEIGHT_FIELD, "8",
+    height_field = new wxTextCtrl(panel, ID_HEIGHT_FIELD, wxString{} << chip_height,
             wxDefaultPosition, wxDefaultSize,
             wxTE_RIGHT,
             wxIntegerValidator<int>());
@@ -192,13 +207,27 @@ wxWindow * NewChipDialog::make_name_panel(wxWindow * parent,
     return panel;
 }
 
-wxWindow * NewChipDialog::make_pin_window(wxWindow * parent)
+wxWindow * ChipEditor::make_pin_window(wxWindow * parent,
+                const std::unordered_map<std::string, vu2> * pin_labels)
 {
     auto * panel = new wxNotebook(parent, wxID_ANY);
-    left_pins = new detail::PinListCtrl(panel, wxID_ANY, 8);
-    right_pins = new detail::PinListCtrl(panel, wxID_ANY, 8);
-    top_pins = new detail::PinListCtrl(panel, wxID_ANY, 3);
-    bottom_pins = new detail::PinListCtrl(panel, wxID_ANY, 3);
+    left_pins = new detail::PinListCtrl(panel, wxID_ANY, chip_height);
+    right_pins = new detail::PinListCtrl(panel, wxID_ANY, chip_height);
+    top_pins = new detail::PinListCtrl(panel, wxID_ANY, chip_width);
+    bottom_pins = new detail::PinListCtrl(panel, wxID_ANY, chip_width);
+
+    if(pin_labels != nullptr)
+    {
+        const std::vector<detail::PinListCtrl*> grids = {
+            top_pins, bottom_pins, right_pins, left_pins
+        };
+        for(const auto & [label, pos] : *pin_labels)
+        {
+            const auto & [side, offset] = pos;
+            auto grid = grids[side];
+            grid->SetCellValue(offset, 0, label);
+        }
+    }
 
     panel->AddPage(left_pins, "Left", true);
     panel->AddPage(right_pins, "Right", true);
@@ -234,7 +263,7 @@ wxWindow * NewChipDialog::make_pin_window(wxWindow * parent)
     return panel;
 }
 
-wxWindow * NewChipDialog::make_buttons(wxWindow * parent)
+wxWindow * ChipEditor::make_buttons(wxWindow * parent)
 {
     wxPanel * buttons_panel = new wxPanel(parent);
     wxBoxSizer * buttons_sizer = new wxBoxSizer(wxHORIZONTAL);

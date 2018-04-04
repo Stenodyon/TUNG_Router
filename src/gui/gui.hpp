@@ -20,6 +20,9 @@ enum
 
     ID_NEW_BOARD = 6,
     ID_NEW_CHIP = 7,
+
+    ID_LIBRARY_IMPORT = 8,
+    ID_LIBRARY_EXPORT = 9,
 };
 
 class MainFrame : public wxFrame
@@ -28,10 +31,15 @@ class MainFrame : public wxFrame
 
         void OnExit(wxCommandEvent&);
         void OnOpen(wxCommandEvent&);
-        void OpenNewChipDialog();
+        void OnLibraryImport(wxCommandEvent&);
+        void OnLibraryExport(wxCommandEvent&);
+        void OpenChipEditor(const std::string & folder = "misc",
+                const std::string & chip_name = "new_chip",
+                chip_type * to_edit = nullptr);
 
         wxMenu * make_file_menu();
         wxMenu * make_new_menu();
+        wxMenu * make_library_menu();
 
         wxWindow * make_library_window(wxWindow * parent);
 
@@ -47,6 +55,10 @@ class RouterApp : public wxApp
 {
     private:
         MainFrame * frame;
+
+        void HandleEvent(wxEvtHandler * handler,
+                wxEventFunction func,
+                wxEvent & event) const override;
 
     public:
         ~RouterApp();

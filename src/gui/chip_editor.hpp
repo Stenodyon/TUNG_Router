@@ -19,6 +19,9 @@
 #define ID_WIDTH_FIELD 204
 #define ID_HEIGHT_FIELD 205
 
+#define DEFAULT_NAME "new_chip"
+#define DEFAULT_FOLDER "misc"
+
 namespace detail
 {
     class ChipNameValidator : public wxTextValidator
@@ -70,10 +73,14 @@ class ChipDisplay : public wxPanel
         void OnPaint(wxPaintEvent& event);
 };
 
-class NewChipDialog : public wxDialog
+class ChipEditor : public wxDialog
 {
     public:
-        NewChipDialog(wxWindow * parent, wxWindowID id, std::vector<wxString> folders);
+        ChipEditor(wxWindow * parent, wxWindowID id,
+                std::vector<wxString> folders,
+                const std::string & name = "new_chip",
+                const std::string & folder = "misc",
+                chip_type * to_edit = nullptr);
 
         chip_type get_created_chip();
         wxString get_chip_name();
@@ -93,10 +100,12 @@ class NewChipDialog : public wxDialog
         detail::PinListCtrl * left_pins, * right_pins, * top_pins, * bottom_pins;
 
         wxWindow * make_input_panel(wxWindow * parent,
-                std::vector<wxString> & folders);
+                std::vector<wxString> & folders,
+                const std::unordered_map<std::string, vu2> * pin_labels);
         wxWindow * make_name_panel(wxWindow * parent,
                 std::vector<wxString> & folders);
-        wxWindow * make_pin_window(wxWindow * parent);
+        wxWindow * make_pin_window(wxWindow * parent,
+                const std::unordered_map<std::string, vu2> * pin_labels);
         wxWindow * make_buttons(wxWindow * parent);
 };
 

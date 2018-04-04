@@ -62,17 +62,17 @@ namespace parser {
         }
 
         template <typename ... Types, std::size_t ... Seq>
-        bool call_on_tuple_impl(std::function<bool(Types...)> func,
+        void call_on_tuple_impl(std::function<void(Types...)> func,
                 std::tuple<Types...> tup, std::index_sequence<Seq...>)
         {
-            return func(std::get<Seq>(tup)...);
+            func(std::get<Seq>(tup)...);
         }
 
         template <typename ... Types>
-        bool call_on_tuple(std::function<bool(Types...)> func,
+        void call_on_tuple(std::function<void(Types...)> func,
                 std::tuple<Types...> tup)
         {
-            return call_on_tuple_impl(func, tup, std::index_sequence_for<Types...>{});
+            call_on_tuple_impl(func, tup, std::index_sequence_for<Types...>{});
         }
 
     } // namespace detail
@@ -93,20 +93,20 @@ namespace parser {
             class CommandBase {
                 public:
                     virtual ~CommandBase() {}
-                    virtual bool parse(const std::vector<std::string>& values) = 0;
+                    virtual void parse(const std::vector<std::string>& values) = 0;
             };
 
             template <typename ... Types>
             class Command : public CommandBase {
                 private:
                     const std::string name;
-                    std::function<bool(Types...)> action;
+                    std::function<void(Types...)> action;
 
                 public:
-                    Command(const std::string name, std::function<bool(Types...)>& action)
+                    Command(const std::string name, std::function<void(Types...)>& action)
                         : name(name), action(action)
                     {}
-                    bool parse(const std::vector<std::string>& values) override;
+                    void parse(const std::vector<std::string>& values) override;
             };
 
             std::unordered_map<std::string, CommandBase*> commands;
@@ -116,13 +116,13 @@ namespace parser {
             template <typename ... Types>
             void add_command(
                     const std::string name,
-                    std::function<bool(Types...)> action);
+                    std::function<void(Types...)> action);
 
             void parse(const std::string& contents);
     };
 
     template <typename ... Types>
-    bool CommandParser::Command<Types...>::parse(const std::vector<std::string>& values)
+    void CommandParser::Command<Types...>::parse(const std::vector<std::string>& values)
     {
         if(values.size() - 1 != sizeof...(Types))
         {
@@ -133,19 +133,19 @@ namespace parser {
         }
         if constexpr(sizeof...(Types) == 0)
         {
-            return action();
+            action();
         }
         else
         {
             std::tuple<Types...> parsed_values =
                 detail::parse_values<Types...>(values);
-            return detail::call_on_tuple(action, parsed_values);
+            detail::call_on_tuple(action, parsed_values);
         }
     }
 
     template <typename ... Types>
     void CommandParser::add_command(const std::string name,
-            std::function<bool(Types...)> action)
+            std::function<void(Types...)> action)
     {
         if(name == "")
             throw std::invalid_argument("Cannot have an unnamed command");

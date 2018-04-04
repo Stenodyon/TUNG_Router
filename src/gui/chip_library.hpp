@@ -2,6 +2,7 @@
 
 #include <string>
 #include <memory>
+#include <optional>
 
 #include <wx/wx.h>
 #include <wx/treectrl.h>
@@ -42,16 +43,25 @@ class ChipLibrary : public wxTreeCtrl
         void OnItemRightClick(wxTreeEvent & event);
         void OnFolderPopupClick(wxCommandEvent & event);
         wxTreeItemId FindFolder(const std::string & name);
+        wxTreeItemId FindChip(const wxTreeItemId & folder, const std::string & name);
 
     public:
         ChipLibrary(wxWindow * parent);
 
         wxTreeItemId AddFolder(const std::string & name);
-        wxTreeItemId AddChip(const std::string & folder_name,
+        wxTreeItemId SetChip(const wxTreeItemId & folder,
+                const std::string & chip_name,
+                const chip_type & chip);
+        wxTreeItemId SetChip(const std::string & folder_name,
                 const std::string & chip_name,
                 const chip_type & chip);
         wxTreeItemId NewFolder();
 
+        chip_type * GetChip(const wxTreeItemId & chip) const;
+        std::optional<wxString> GetFolder(const wxTreeItemId & chip) const;
         std::vector<wxString> GetFolders() const;
         
+        void SaveToFile(const std::string & filename) const;
+        void LoadFromFile(const std::string & filename);
+        void LoadFromText(const std::string & contents);
 };

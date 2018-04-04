@@ -67,13 +67,7 @@ namespace parser {
 
             try
             {
-                if(!command->parse(components))
-                {
-                    std::ostringstream sstream;
-                    sstream << "Line " << line_count << ": ";
-                    sstream << "parse error: '" << line << "'" << std::endl;
-                    throw parse_error(sstream.str());
-                }
+                command->parse(components);
             }
             catch(std::invalid_argument& e)
             {

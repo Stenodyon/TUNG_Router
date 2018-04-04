@@ -8,3 +8,4 @@ resources/
 .ycm_extra_conf.py
 *.txt
 *.tungboard
+*.trl

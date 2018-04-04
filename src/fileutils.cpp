@@ -34,6 +34,12 @@ std::ifstream::pos_type file_size(const std::string& filename)
     return fsize;
 }
 
+void write_file(const std::string & filename, const std::string contents)
+{
+    std::fstream file(filename, std::ios::out);
+    file << contents;
+}
+
 std::string read_file(std::string filename)
 {
     std::ifstream stream(filename);

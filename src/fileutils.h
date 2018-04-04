@@ -16,6 +16,7 @@
 #include <fstream>
 
 std::ifstream::pos_type file_size(const std::string& filename);
+void write_file(const std::string & filename, const std::string contents);
 std::string read_file(std::string filename);
 
 void write_bin(uint8_t * data, size_t size, const std::string & filename);

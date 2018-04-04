@@ -21,23 +21,21 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
             if(!value)
                 throw std::invalid_argument("Board size not set (board width height)");
         };
-    std::function<bool(int,int)> board_action =
+    std::function<void(int,int)> board_action =
         [&board_size, this]
         (int width, int height)
         {
             board_size = {width, height};
             this->map = grid<int>(width, height);
-            return true;
         };
-    std::function<bool(std::string, int, int)> chip_action =
+    std::function<void(std::string, int, int)> chip_action =
         [&precondition, this]
         (std::string name, int width, int height)
         {
             precondition();
             this->types.insert({name, {(uint_t)width, (uint_t)height}});
-            return true;
         };
-    std::function<bool(std::string, std::string, int, std::string)>
+    std::function<void(std::string, std::string, int, std::string)>
         pin_action =
         [&precondition, this](std::string type_name, std::string _side,
                 int offset, std::string label)
@@ -58,9 +56,8 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
             }
             chip_type & type = this->types.at(type_name);
             type.add_pin(side, offset, label);
-            return true;
         };
-    std::function<bool(std::string, int, int, std::string)> instance_action =
+    std::function<void(std::string, int, int, std::string)> instance_action =
         [&precondition, this]
         (std::string type_name, int x_pos, int y_pos, std::string name)
         {
@@ -73,9 +70,8 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
             }
             chip_type & type = this->types.at(type_name);
             this->chips.insert({name, {{x_pos, y_pos}, type}});
-            return true;
         };
-    std::function<bool(std::string, std::string, std::string)> net_action =
+    std::function<void(std::string, std::string, std::string)> net_action =
         [&precondition, this]
         (std::string name, std::string chip_name, std::string pin_label)
         {
@@ -98,7 +94,6 @@ routing_problem::routing_problem(std::string filename) : map(32, 32)
             auto pin_pos = _chip.get_pin_pos(side, pin_number);
             this->nets[name].push_back(pin_pos);
             io_pins.insert({side, pin_pos});
-            return true;
         };
     parser.add_command("board", board_action);
     parser.add_command("chip", chip_action);
