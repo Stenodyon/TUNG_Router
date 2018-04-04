@@ -33,6 +33,17 @@ ChipEditor::ChipEditor(wxWindow * parent, wxWindowID id,
 
     chip_display = new ChipDisplay(this, wxID_ANY);
     chip_display->SetName(chip_name);
+    chip_display->SetWidth(chip_width);
+    chip_display->SetHeight(chip_height);
+
+    if(to_edit != nullptr)
+    {
+        for(const auto& [label, pos] : to_edit->pin_labels)
+        {
+            const auto& [side, offset] = pos;
+            chip_display->SetLabel(side, offset, label);
+        }
+    }
 
     sizer->Add(make_input_panel(this, folders, pins), 1, wxEXPAND);
     sizer->Add(chip_display, 1, wxEXPAND);
@@ -59,13 +70,13 @@ chip_type ChipEditor::get_created_chip()
             continue;
         type.add_pin(SOUTH, offset, label.ToStdString());
     }
-    for(const auto& [offset, label] : chip_display->GetLabels(2))
+    for(const auto& [offset, label] : chip_display->GetLabels(3))
     {
         if(offset >= height)
             continue;
         type.add_pin(WEST, offset, label.ToStdString());
     }
-    for(const auto& [offset, label] : chip_display->GetLabels(3))
+    for(const auto& [offset, label] : chip_display->GetLabels(2))
     {
         if(offset >= height)
             continue;
@@ -251,13 +262,13 @@ wxWindow * ChipEditor::make_pin_window(wxWindow * parent,
             {
                 int row = event.GetRow();
                 wxString value = left_pins->GetCellValue(row, 0);
-                chip_display->SetLabel(2, row, value);
+                chip_display->SetLabel(3, row, value);
             });
     right_pins->Bind(wxEVT_GRID_CELL_CHANGED, [this](wxGridEvent& event)
             {
                 int row = event.GetRow();
                 wxString value = right_pins->GetCellValue(row, 0);
-                chip_display->SetLabel(3, row, value);
+                chip_display->SetLabel(2, row, value);
             });
 
     return panel;
@@ -390,7 +401,7 @@ void ChipDisplay::OnPaint(wxPaintEvent&)
     const int top_side = (s_height - scale * height) / 2;
     const int bottom_side = (s_height + scale * height) / 2;
     const int pin_size = (scale * 3) / 4;
-    for(auto [offset, label] : labels[0])
+    for(auto [offset, label] : labels[0]) // North
     {
         if(offset >= width)
             continue;
@@ -409,7 +420,7 @@ void ChipDisplay::OnPaint(wxPaintEvent&)
                 y - scale / 2,
                 90.);
     }
-    for(auto [offset, label] : labels[1])
+    for(auto [offset, label] : labels[1]) // South
     {
         if(offset >= width)
             continue;
@@ -428,7 +439,7 @@ void ChipDisplay::OnPaint(wxPaintEvent&)
                 y + scale / 2 + l_width,
                 90.);
     }
-    for(auto [offset, label] : labels[2])
+    for(auto [offset, label] : labels[3]) // West
     {
         if(offset >= height)
             continue;
@@ -446,7 +457,7 @@ void ChipDisplay::OnPaint(wxPaintEvent&)
                 x - scale / 2 - l_width,
                 y - (l_height * 5) / 8);
     }
-    for(auto [offset, label] : labels[3])
+    for(auto [offset, label] : labels[2]) // East
     {
         if(offset >= height)
             continue;

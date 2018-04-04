@@ -25,6 +25,8 @@ OBJ=$(SRC:$(SRC_DIR)%.cpp=$(BUILD_DIR)%.o) $(RES_OBJ)
 TEST_SRC=$(shell find $(TESTS_DIR) -type f -name '*.cpp')
 TEST_OBJ=$(TEST_SRC:$(TESTS_DIR)%.cpp=$(BUILD_DIR)%.o)
 
+FLAGS+= -MT $@ -MMD -MP -MF $(dir $@).d/$(basename $(notdir $@)).d
+
 default: release
 
 release: FLAGS+= -O2
@@ -54,12 +56,16 @@ $(BIN_TEST): $(OBJ) $(TEST_OBJ)
 
 $(BUILD_DIR)%.o: $(SRC_DIR)%.cpp
 	@mkdir -p $(dir $@)
+	@mkdir -p $(dir $@).d/
 	g++ -c $< $(FLAGS) -o $@
 
 $(BUILD_DIR)%.o: $(TESTS_DIR)%.cpp
 	@mkdir -p $(dir $@)
+	@mkdir -p $(dir $@).d/
 	g++ -c $< $(FLAGS) -I./src -o $@
 
 $(BUILD_DIR)%.o: $(SRC_DIR)%.rc
 	@mkdir -p $(dir $@)
 	windres --use-temp-file -I./lib/wx/include $< $@
+
+include $(shell find $(DEP_DIR) -type f -name '*.d')

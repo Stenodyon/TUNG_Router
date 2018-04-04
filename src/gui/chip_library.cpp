@@ -205,6 +205,11 @@ std::vector<wxString> ChipLibrary::GetFolders() const
 
 void ChipLibrary::SaveToFile(const std::string & filename) const
 {
+    write_file(filename, SaveToString());
+}
+
+std::string ChipLibrary::SaveToString() const
+{
     auto root = GetRootItem();
     wxTreeItemIdValue cookie;
     auto folder = GetFirstChild(root, cookie);
@@ -235,7 +240,7 @@ void ChipLibrary::SaveToFile(const std::string & filename) const
         folder = GetNextChild(folder, cookie);
     }
     emitter.EmitFooter();
-    write_file(filename, emitter.GetStr());
+    return emitter.GetStr();
 }
 
 void ChipLibrary::LoadFromFile(const std::string & filename)

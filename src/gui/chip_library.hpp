@@ -62,6 +62,7 @@ class ChipLibrary : public wxTreeCtrl
         std::vector<wxString> GetFolders() const;
         
         void SaveToFile(const std::string & filename) const;
+        std::string SaveToString() const;
         void LoadFromFile(const std::string & filename);
         void LoadFromText(const std::string & contents);
 };
