@@ -37,8 +37,6 @@ class ChipLibrary : public wxTreeCtrl
 
         void make_image_list();
 
-        bool IsFolder(wxTreeItemId & id);
-
         void OnRightClick(wxContextMenuEvent & event);
         void OnItemRightClick(wxTreeEvent & event);
         void OnFolderPopupClick(wxCommandEvent & event);
@@ -47,6 +45,8 @@ class ChipLibrary : public wxTreeCtrl
 
     public:
         ChipLibrary(wxWindow * parent);
+
+        bool IsFolder(wxTreeItemId & id);
 
         wxTreeItemId AddFolder(const std::string & name);
         wxTreeItemId SetChip(const wxTreeItemId & folder,

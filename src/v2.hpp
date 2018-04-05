@@ -27,6 +27,9 @@ struct v2
     v2<int_t> & operator+=(const v2<int_t> & other);
     v2<int_t> & operator-=(const v2<int_t> & other);
 
+    v2<int_t> operator*(const int_t & value) const;
+    v2<int_t> operator/(const int_t & value) const;
+
     bool operator==(const v2<int_t> & other) const;
     bool operator!=(const v2<int_t> & other) const;
     bool operator<(const v2<int_t> & other) const;
@@ -73,6 +76,18 @@ v2<int_t> & v2<int_t>::operator-=(const v2<int_t> & other)
 {
     x -= other.x; y -= other.y;
     return *this;
+}
+
+template <typename int_t>
+v2<int_t> v2<int_t>::operator*(const int_t & value) const
+{
+    return {x * value, y * value};
+}
+
+template <typename int_t>
+v2<int_t> v2<int_t>::operator/(const int_t & value) const
+{
+    return {x / value, y / value};
 }
 
 template <typename int_t>

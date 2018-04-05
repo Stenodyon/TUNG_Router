@@ -1,13 +1,11 @@
 #pragma once
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
 #include <wx/wx.h>
-#pragma GCC diagnostic pop
 
 #include <memory>
 
 #include "chip_library.hpp"
+#include "placer_control.hpp"
 
 enum
 {
@@ -36,6 +34,7 @@ class MainFrame : public wxFrame
         void OpenChipEditor(const std::string & folder = "misc",
                 const std::string & chip_name = "new_chip",
                 chip_type * to_edit = nullptr);
+        void OnLibraryClicked(wxMouseEvent& event);
 
         wxMenu * make_file_menu();
         wxMenu * make_new_menu();
@@ -43,6 +42,7 @@ class MainFrame : public wxFrame
 
         wxWindow * make_library_window(wxWindow * parent);
 
+        PlacerControl * placer;
         ChipLibrary * chip_library;
 
         wxSize DoGetBestClientSize() const override;

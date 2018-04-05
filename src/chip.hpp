@@ -25,6 +25,7 @@ struct chip_type
     vu2 get_pin_by_label(const std::string & label) const;
     vi2 get_pin_offset(uint_t side, uint_t pin_number) const;
     bool has_board(int side) const;
+    vi2 size() const { return {(signed)width, (signed)height}; }
 };
 
 struct chip

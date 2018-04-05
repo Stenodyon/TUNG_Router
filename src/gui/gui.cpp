@@ -5,7 +5,6 @@
 #include <wx/splitter.h>
 
 #include "../fileutils.h"
-#include "placer_control.hpp"
 #include "chip_editor.hpp"
 #include "../command_parser.hpp"
 
@@ -34,14 +33,16 @@ MainFrame::MainFrame()
     SetSizerAndFit(sizer);
     int sash_pos = splitter->GetSize().GetWidth() * 0.9;
 
+    placer = new PlacerControl(splitter);
+    auto lib_window = make_library_window(splitter);
     splitter->SplitVertically(
-            new PlacerControl(splitter),
-            make_library_window(splitter),
+            placer, lib_window,
             sash_pos);
 
     SetMinSize({800, 600});
 
     Bind(wxEVT_MENU, &MainFrame::OnExit, this, wxID_EXIT);
+    chip_library->Bind(wxEVT_LEFT_DOWN, MainFrame::OnLibraryClicked, this);
     library_menu->Bind(wxEVT_MENU,
             &MainFrame::OnLibraryExport, this,
             ID_LIBRARY_EXPORT);
@@ -104,6 +105,37 @@ void MainFrame::OpenChipEditor(const std::string & folder,
         std::string folder = dialog->get_chip_folder().ToStdString();
 
         chip_library->SetChip(folder, chip_name, type);
+    }
+}
+
+void MainFrame::OnLibraryClicked(wxMouseEvent& event)
+{
+    if(event.Dragging())
+    {
+        event.Skip(); return;
+    }
+
+    int flag = 0;
+    auto item = chip_library->HitTest(event.GetPosition(), flag);
+    if(!(flag & wxTREE_HITTEST_ONITEM))
+    {
+        event.Skip(); return;
+    }
+    if(!item.IsOk())
+    {
+        event.Skip(); return;
+    }
+
+    if(!chip_library->IsFolder(item))
+    {
+        std::string name = chip_library->GetItemText(item).ToStdString();
+        chip_type * type = chip_library->GetChip(item);
+        placer->SetSelected({name, name, type});
+        event.Skip();
+    }
+    else
+    {
+        event.Skip(); return;
     }
 }
 
